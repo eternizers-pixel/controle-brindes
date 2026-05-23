@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
+import { Power, PowerOff } from 'lucide-react';
 import Modal from './Modal';
 import { criarBrinde, atualizarBrinde } from '../api/client';
 
 export default function BrindeFormModal({ open, brinde, onClose, onSaved }) {
   const isEdit = Boolean(brinde?.id);
   const [form, setForm] = useState({
-    nome: '', descricao: '',
+    nome: '', codigo: '', descricao: '',
     quantidade_estoque: 0, custo_unitario: 0, status: 'ativo',
   });
   const [foto, setFoto] = useState(null);
@@ -18,6 +19,7 @@ export default function BrindeFormModal({ open, brinde, onClose, onSaved }) {
     if (isEdit) {
       setForm({
         nome: brinde.nome || '',
+        codigo: brinde.codigo || '',
         descricao: brinde.descricao || '',
         quantidade_estoque: brinde.quantidade_estoque || 0,
         custo_unitario: brinde.custo_unitario || 0,
@@ -26,7 +28,7 @@ export default function BrindeFormModal({ open, brinde, onClose, onSaved }) {
       setPreview(brinde.foto || null);
     } else {
       setForm({
-        nome: '', descricao: '',
+        nome: '', codigo: '', descricao: '',
         quantidade_estoque: 0, custo_unitario: 0, status: 'ativo',
       });
       setPreview(null);
@@ -47,18 +49,19 @@ export default function BrindeFormModal({ open, brinde, onClose, onSaved }) {
     reader.readAsDataURL(f);
   };
 
-  const submit = async () => {
+  const submit = async (overrideStatus) => {
     setErr('');
     if (!form.nome.trim()) return setErr('Informe o nome do brinde.');
     setLoading(true);
     try {
       const payload = {
         nome: form.nome,
+        codigo: form.codigo || null,
         descricao: form.descricao || null,
-        categoria_id: null,           // sem categoria
-        estoque_minimo: 0,            // sem alerta de mínimo
+        categoria_id: null,
+        estoque_minimo: 0,
         custo_unitario: Number(form.custo_unitario) || 0,
-        status: form.status,
+        status: overrideStatus || form.status,
         foto: foto !== null ? foto : (isEdit ? undefined : preview),
       };
       if (!isEdit) payload.quantidade_estoque = Number(form.quantidade_estoque) || 0;
@@ -74,6 +77,12 @@ export default function BrindeFormModal({ open, brinde, onClose, onSaved }) {
     }
   };
 
+  const toggleStatus = () => {
+    const novo = form.status === 'ativo' ? 'inativo' : 'ativo';
+    setForm({ ...form, status: novo });
+    submit(novo);
+  };
+
   return (
     <Modal
       open={open}
@@ -82,37 +91,58 @@ export default function BrindeFormModal({ open, brinde, onClose, onSaved }) {
       title={isEdit ? 'Editar brinde' : 'Cadastrar novo brinde'}
       footer={
         <>
+          {isEdit && (
+            <button
+              type="button"
+              className={`btn ${form.status === 'ativo' ? 'btn-outline text-rose-600 border-rose-200 hover:bg-rose-50' : 'btn-outline text-emerald-600 border-emerald-200 hover:bg-emerald-50'} mr-auto`}
+              onClick={toggleStatus}
+              disabled={loading}
+              title={form.status === 'ativo' ? 'Inativar este brinde' : 'Reativar este brinde'}
+            >
+              {form.status === 'ativo' ? <><PowerOff size={15}/> Inativar</> : <><Power size={15}/> Reativar</>}
+            </button>
+          )}
           <button className="btn-ghost" onClick={onClose} disabled={loading}>Cancelar</button>
-          <button className="btn-primary" onClick={submit} disabled={loading}>
+          <button className="btn-primary" onClick={() => submit()} disabled={loading}>
             {loading ? 'Salvando…' : isEdit ? 'Salvar alterações' : 'Cadastrar brinde'}
           </button>
         </>
       }
     >
-      <div className="grid grid-cols-3 gap-4">
-        <div className="col-span-1">
-          <label className="label">Foto</label>
-          <label className="block aspect-square bg-slate-100 rounded-xl overflow-hidden cursor-pointer hover:bg-slate-200 transition-colors grid place-items-center text-slate-400 text-sm">
-            {preview ? (
-              <img src={preview} alt="" className="w-full h-full object-cover" />
-            ) : (
-              <span className="text-center px-2">Clique para<br/>enviar uma foto</span>
-            )}
-            <input type="file" accept="image/*" onChange={onFile} className="hidden" />
-          </label>
+      <div className="space-y-4">
+        {/* Foto */}
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="sm:w-32 flex-shrink-0">
+            <label className="label">Foto</label>
+            <label className="block aspect-square bg-slate-100 rounded-xl overflow-hidden cursor-pointer hover:bg-slate-200 transition-colors grid place-items-center text-slate-400 text-sm">
+              {preview ? (
+                <img src={preview} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-center px-2">Clique para<br/>enviar uma foto</span>
+              )}
+              <input type="file" accept="image/*" onChange={onFile} className="hidden" />
+            </label>
+          </div>
+
+          <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="sm:col-span-2">
+              <label className="label">Nome *</label>
+              <input className="input" value={form.nome} onChange={set('nome')} autoFocus />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="label">Código</label>
+              <input className="input" value={form.codigo} onChange={set('codigo')}
+                     placeholder="Código interno / SKU (opcional)" />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="label">Descrição</label>
+              <textarea className="input" rows={2} value={form.descricao} onChange={set('descricao')} />
+            </div>
+          </div>
         </div>
 
-        <div className="col-span-2 grid grid-cols-2 gap-4">
-          <div className="col-span-2">
-            <label className="label">Nome *</label>
-            <input className="input" value={form.nome} onChange={set('nome')} />
-          </div>
-
-          <div className="col-span-2">
-            <label className="label">Descrição</label>
-            <textarea className="input" rows={2} value={form.descricao} onChange={set('descricao')} />
-          </div>
-
+        {/* Demais campos */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {!isEdit && (
             <div>
               <label className="label">Estoque inicial</label>
@@ -120,22 +150,14 @@ export default function BrindeFormModal({ open, brinde, onClose, onSaved }) {
                      value={form.quantidade_estoque} onChange={set('quantidade_estoque')} />
             </div>
           )}
-
-          <div className={isEdit ? 'col-span-1' : ''}>
+          <div>
             <label className="label">Custo unitário (R$)</label>
             <input className="input" type="number" step="0.01" min="0"
                    value={form.custo_unitario} onChange={set('custo_unitario')} />
           </div>
-
-          <div className={isEdit ? 'col-span-1' : 'col-span-2'}>
-            <label className="label">Status</label>
-            <select className="input" value={form.status} onChange={set('status')}>
-              <option value="ativo">Ativo</option>
-              <option value="inativo">Inativo</option>
-            </select>
-          </div>
         </div>
-        {err && <div className="col-span-3 text-rose-600 text-sm">{err}</div>}
+
+        {err && <div className="text-rose-600 text-sm">{err}</div>}
       </div>
     </Modal>
   );

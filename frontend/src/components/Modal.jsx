@@ -14,24 +14,31 @@ export default function Modal({ open, onClose, title, children, footer, size = '
   }, [open, onClose]);
 
   if (!open) return null;
-  const widths = { sm: 'max-w-sm', md: 'max-w-lg', lg: 'max-w-2xl' };
+  // Cresce gradualmente: full no mobile, limita só em telas maiores
+  const widths = {
+    sm: 'sm:max-w-sm',
+    md: 'sm:max-w-lg',
+    lg: 'sm:max-w-2xl',
+  };
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-slate-900/50 p-4"
-         onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-slate-900/50 sm:p-4"
+      onClick={onClose}
+    >
       <div
-        className={`bg-white rounded-2xl shadow-soft w-full ${widths[size]} max-h-[90vh] overflow-hidden flex flex-col`}
+        className={`bg-white w-full ${widths[size]} max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col rounded-t-2xl sm:rounded-2xl shadow-soft`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-          <h2 className="font-semibold text-slate-800">{title}</h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-700">
+        <div className="flex items-center justify-between px-4 sm:px-5 py-3 sm:py-4 border-b border-slate-100">
+          <h2 className="font-semibold text-slate-800 truncate pr-2">{title}</h2>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-700 flex-shrink-0">
             <X size={20} />
           </button>
         </div>
-        <div className="p-5 overflow-y-auto">{children}</div>
+        <div className="p-4 sm:p-5 overflow-y-auto flex-1">{children}</div>
         {footer && (
-          <div className="px-5 py-3 bg-slate-50 border-t border-slate-100 flex justify-end gap-2">
+          <div className="px-4 sm:px-5 py-3 bg-slate-50 border-t border-slate-100 flex flex-wrap justify-end gap-2">
             {footer}
           </div>
         )}

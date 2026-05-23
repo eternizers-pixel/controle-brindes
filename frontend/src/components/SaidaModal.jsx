@@ -6,8 +6,8 @@ import { hoje, TIPOS_SOLICITANTE } from '../utils/helpers';
 export default function SaidaModal({ open, brinde, onClose, onSaved }) {
   const [form, setForm] = useState({
     quantidade: '', data: hoje(),
-    destinatario_nome: '', tipo_solicitante: 'escola',
-    responsavel: '', observacao: '',
+    destinatario_nome: '', tipo_solicitante: '',
+    observacao: '',
   });
   const [sugestoes, setSugestoes] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -17,8 +17,8 @@ export default function SaidaModal({ open, brinde, onClose, onSaved }) {
     if (open) {
       setForm({
         quantidade: '', data: hoje(),
-        destinatario_nome: '', tipo_solicitante: 'escola',
-        responsavel: '', observacao: '',
+        destinatario_nome: '', tipo_solicitante: '',
+        observacao: '',
       });
       setErr('');
       getDestinatarios().then(setSugestoes).catch(() => {});
@@ -33,9 +33,6 @@ export default function SaidaModal({ open, brinde, onClose, onSaved }) {
     if (!qty || qty <= 0) return setErr('Informe uma quantidade válida.');
     if (qty > brinde.quantidade_estoque)
       return setErr(`Estoque insuficiente. Disponível: ${brinde.quantidade_estoque}`);
-    if (!form.destinatario_nome) return setErr('Informe para quem foi o brinde.');
-    if (!form.responsavel) return setErr('Informe o responsável pela entrega.');
-    if (!form.data) return setErr('Informe a data da entrega.');
 
     setLoading(true);
     try {
@@ -43,9 +40,9 @@ export default function SaidaModal({ open, brinde, onClose, onSaved }) {
         brinde_id: brinde.id,
         quantidade: qty,
         data: form.data,
-        destinatario_nome: form.destinatario_nome,
-        tipo_solicitante: form.tipo_solicitante,
-        responsavel: form.responsavel,
+        destinatario_nome: form.destinatario_nome || null,
+        tipo_solicitante: form.tipo_solicitante || null,
+        responsavel: null,
         observacao: form.observacao || null,
       });
       onSaved?.();
@@ -62,7 +59,7 @@ export default function SaidaModal({ open, brinde, onClose, onSaved }) {
       open={open}
       onClose={onClose}
       size="lg"
-      title={`Saída de estoque — ${brinde?.nome || ''}`}
+      title={`Saída — ${brinde?.nome || ''}`}
       footer={
         <>
           <button className="btn-ghost" onClick={onClose} disabled={loading}>Cancelar</button>
@@ -75,27 +72,35 @@ export default function SaidaModal({ open, brinde, onClose, onSaved }) {
       <div className="mb-3 text-xs text-slate-500">
         Disponível em estoque: <span className="font-semibold text-slate-700">{brinde?.quantidade_estoque}</span>
       </div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
-          <label className="label">Quantidade retirada *</label>
-          <input className="input" type="number" min="1" max={brinde?.quantidade_estoque}
-                 value={form.quantidade} onChange={set('quantidade')} autoFocus />
+          <label className="label">Quantidade *</label>
+          <input
+            className="input"
+            type="number"
+            min="1"
+            max={brinde?.quantidade_estoque}
+            value={form.quantidade}
+            onChange={set('quantidade')}
+            autoFocus
+          />
         </div>
         <div>
-          <label className="label">Data da entrega *</label>
+          <label className="label">Data da entrega</label>
           <input className="input" type="date" value={form.data} onChange={set('data')} />
         </div>
 
         <div>
-          <label className="label">Tipo de solicitante *</label>
+          <label className="label">Tipo de solicitante</label>
           <select className="input" value={form.tipo_solicitante} onChange={set('tipo_solicitante')}>
+            <option value="">— não informado —</option>
             {TIPOS_SOLICITANTE.map((t) => (
               <option key={t.value} value={t.value}>{t.label}</option>
             ))}
           </select>
         </div>
         <div>
-          <label className="label">Para quem foi o brinde *</label>
+          <label className="label">Para quem foi</label>
           <input
             className="input"
             list="dest-sug"
@@ -105,22 +110,16 @@ export default function SaidaModal({ open, brinde, onClose, onSaved }) {
           />
           <datalist id="dest-sug">
             {sugestoes
-              .filter((d) => d.tipo === form.tipo_solicitante)
+              .filter((d) => !form.tipo_solicitante || d.tipo === form.tipo_solicitante)
               .map((d) => <option key={d.id} value={d.nome} />)}
           </datalist>
         </div>
 
-        <div className="col-span-2">
-          <label className="label">Nome do responsável *</label>
-          <input className="input" value={form.responsavel} onChange={set('responsavel')}
-                 placeholder="Quem entregou ou autorizou" />
-        </div>
-
-        <div className="col-span-2">
-          <label className="label">Observação (opcional)</label>
+        <div className="sm:col-span-2">
+          <label className="label">Observação</label>
           <textarea className="input" rows={3} value={form.observacao} onChange={set('observacao')} />
         </div>
-        {err && <div className="col-span-2 text-rose-600 text-sm">{err}</div>}
+        {err && <div className="sm:col-span-2 text-rose-600 text-sm">{err}</div>}
       </div>
     </Modal>
   );

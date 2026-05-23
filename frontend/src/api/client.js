@@ -1,10 +1,10 @@
 // src/api/client.js
 // Camada de acesso a dados — Supabase JS client.
-// Mantém a mesma assinatura usada pelas páginas (getBrindes, criarBrinde, etc.)
 import { supabase } from '../lib/supabase';
 
 /* ---------- helpers ---------- */
-// Aceita tanto o builder do supabase (PromiseLike) quanto o resultado já resolvido.
+// Sempre await a query (builder ou Promise) e devolve apenas data,
+// lançando Error se houver erro.
 const handle = async (q) => {
   const { data, error } = await q;
   if (error) throw new Error(error.message || error.details || JSON.stringify(error));
@@ -43,13 +43,13 @@ export async function getBrindes({ search = '', status, categoria } = {}) {
   if (status)    q = q.eq('status', status);
   if (categoria) q = q.eq('categoria_id', categoria);
   if (search)    q = q.ilike('nome', `%${search}%`);
-  const rows = handle(await q);
-  return rows.map(enriquecerBrinde);
+  const rows = await handle(q);
+  return (rows || []).map(enriquecerBrinde);
 }
 
 export const getBrinde = async (id) => {
-  const row = handle(
-    await supabase.from('brindes').select('*, categorias(nome,cor)').eq('id', id).single()
+  const row = await handle(
+    supabase.from('brindes').select('*, categorias(nome,cor)').eq('id', id).single()
   );
   return enriquecerBrinde(row);
 };
@@ -60,7 +60,7 @@ export async function criarBrinde(payload) {
     quantidade_estoque = 0, estoque_minimo = 5, custo_unitario = 0, status = 'ativo',
   } = payload;
 
-  const novo = handle(await supabase.from('brindes').insert({
+  const novo = await handle(supabase.from('brindes').insert({
     nome: String(nome).trim(),
     descricao: descricao || null,
     foto: foto || null,
@@ -74,7 +74,7 @@ export async function criarBrinde(payload) {
   // Se já tem estoque inicial, registra como movimentação de entrada
   if (Number(quantidade_estoque) > 0) {
     const hoje = new Date().toISOString().slice(0, 10);
-    handle(await supabase.from('movimentacoes').insert({
+    await handle(supabase.from('movimentacoes').insert({
       brinde_id: novo.id, tipo: 'entrada',
       quantidade: Number(quantidade_estoque), data: hoje,
       custo_unitario: Number(custo_unitario),
@@ -86,12 +86,13 @@ export async function criarBrinde(payload) {
 }
 
 export async function atualizarBrinde(id, payload) {
-  // Não permite alterar quantidade_estoque direto — só via movimentações
   const patch = { ...payload };
-  delete patch.quantidade_estoque;
+  delete patch.quantidade_estoque;  // só via movimentações
   if ('categoria_id' in patch) patch.categoria_id = patch.categoria_id || null;
   patch.atualizado_em = new Date().toISOString();
-  return handle(await supabase.from('brindes').update(patch).eq('id', id).select().single());
+  return await handle(
+    supabase.from('brindes').update(patch).eq('id', id).select().single()
+  );
 }
 
 // Soft delete = inativar
@@ -121,17 +122,16 @@ export async function getMovimentacoes(params = {}) {
   if (inicio)           q = q.gte('data', inicio);
   if (fim)              q = q.lte('data', fim);
 
-  const rows = handle(await q);
-  return rows.map((m) => ({
+  const rows = await handle(q);
+  return (rows || []).map((m) => ({
     ...m,
     brinde_nome: m.brindes?.nome,
     brinde_foto: m.brindes?.foto,
   }));
 }
 
-// Usa a RPC do Supabase para garantir atomicidade
 export async function registrarEntrada(d) {
-  return handle(await supabase.rpc('registrar_entrada', {
+  return await handle(supabase.rpc('registrar_entrada', {
     p_brinde_id:  d.brinde_id,
     p_quantidade: d.quantidade,
     p_data:       d.data,
@@ -140,7 +140,7 @@ export async function registrarEntrada(d) {
 }
 
 export async function registrarSaida(d) {
-  return handle(await supabase.rpc('registrar_saida', {
+  return await handle(supabase.rpc('registrar_saida', {
     p_brinde_id:        d.brinde_id,
     p_quantidade:       d.quantidade,
     p_data:             d.data,
@@ -161,29 +161,29 @@ export async function getDestinatarios({ search = '', tipo } = {}) {
   let q = supabase.from('destinatarios').select('*').order('nome');
   if (tipo)   q = q.eq('tipo', tipo);
   if (search) q = q.ilike('nome', `%${search}%`);
-  return handle(await q);
+  return await handle(q);
 }
 
 /* ===================================================================
    DASHBOARD
 =================================================================== */
 export async function getDashboard() {
-  const [brindesRes, movsRes] = await Promise.all([
-    supabase.from('brindes').select('*').eq('status', 'ativo'),
-    supabase.from('movimentacoes').select('*, brindes(nome)'),
+  const [brindes, movsRaw] = await Promise.all([
+    handle(supabase.from('brindes').select('*').eq('status', 'ativo')),
+    handle(supabase.from('movimentacoes').select('*, brindes(nome)')),
   ]);
-  const brindes = handle(brindesRes);
-  const movs    = handle(movsRes);
+  const movs = movsRaw || [];
+  const lista = brindes || [];
 
-  const totalBrindes = brindes.length;
-  const totUnidades  = brindes.reduce((s, b) => s + b.quantidade_estoque, 0);
-  const valorTotal   = brindes.reduce((s, b) => s + b.quantidade_estoque * Number(b.custo_unitario), 0);
+  const totalBrindes = lista.length;
+  const totUnidades  = lista.reduce((s, b) => s + (b.quantidade_estoque || 0), 0);
+  const valorTotal   = lista.reduce((s, b) => s + (b.quantidade_estoque || 0) * Number(b.custo_unitario || 0), 0);
 
   const hoje = new Date();
   const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString().slice(0, 10);
   const saidasMes = movs.filter((m) => m.tipo === 'saida' && m.data >= inicioMes);
   const entreguesMes = saidasMes.reduce((s, m) => s + m.quantidade, 0);
-  const custoEntreguesMes = saidasMes.reduce((s, m) => s + Number(m.custo_total), 0);
+  const custoEntreguesMes = saidasMes.reduce((s, m) => s + Number(m.custo_total || 0), 0);
 
   // mais entregues
   const totaisPorBrinde = {};
@@ -213,8 +213,8 @@ export async function getDashboard() {
     .sort((a, b) => b.total - a.total);
 
   // estoque baixo
-  const estoque_baixo = brindes
-    .filter((b) => b.quantidade_estoque <= b.estoque_minimo)
+  const estoque_baixo = lista
+    .filter((b) => b.estoque_minimo > 0 && b.quantidade_estoque <= b.estoque_minimo)
     .sort((a, b) => a.quantidade_estoque - b.quantidade_estoque)
     .slice(0, 10);
 
@@ -241,9 +241,8 @@ export async function getDashboard() {
    RELATÓRIOS
 =================================================================== */
 export async function relEstoque() {
-  const rows = handle(await supabase.from('brindes')
-    .select('*, categorias(nome)').order('nome'));
-  return rows.map((b) => ({
+  const rows = await handle(supabase.from('brindes').select('*, categorias(nome)').order('nome'));
+  return (rows || []).map((b) => ({
     id: b.id, nome: b.nome,
     categoria: b.categorias?.nome || null,
     quantidade_estoque: b.quantidade_estoque,
@@ -260,8 +259,8 @@ export async function relSaidas(params = {}) {
     .order('data', { ascending: false }).order('id', { ascending: false });
   if (params.inicio) q = q.gte('data', params.inicio);
   if (params.fim)    q = q.lte('data', params.fim);
-  const rows = handle(await q);
-  const mapped = rows.map((r) => ({ ...r, brinde: r.brindes?.nome }));
+  const rows = await handle(q);
+  const mapped = (rows || []).map((r) => ({ ...r, brinde: r.brindes?.nome }));
   return {
     rows: mapped,
     total_custo:    mapped.reduce((s, r) => s + Number(r.custo_total || 0), 0),
@@ -274,9 +273,9 @@ export async function relPorDestinatario(params = {}) {
   if (params.inicio) q = q.gte('data', params.inicio);
   if (params.fim)    q = q.lte('data', params.fim);
   if (params.tipo)   q = q.eq('tipo_solicitante', params.tipo);
-  const rows = handle(await q);
+  const rows = await handle(q);
   const agrup = {};
-  rows.forEach((r) => {
+  (rows || []).forEach((r) => {
     const k = r.destinatario_nome + '|' + r.tipo_solicitante;
     if (!agrup[k]) agrup[k] = {
       destinatario: r.destinatario_nome, tipo: r.tipo_solicitante,
@@ -295,7 +294,7 @@ export async function relCustoEntregas(params = {}) {
   let q = supabase.from('movimentacoes').select('*').eq('tipo', 'saida');
   if (params.inicio) q = q.gte('data', params.inicio);
   if (params.fim)    q = q.lte('data', params.fim);
-  const rows = handle(await q);
+  const rows = (await handle(q)) || [];
   const total_custo = rows.reduce((s, r) => s + Number(r.custo_total || 0), 0);
   const unidades    = rows.reduce((s, r) => s + r.quantidade, 0);
 

@@ -55,7 +55,7 @@ export default function Layout() {
         <span className="font-semibold">Controle de Brindes</span>
       </div>
 
-      <main className="flex-1 bg-slate-50 md:p-8 p-4 pt-16 md:pt-8">
+      <main className="flex-1 bg-slate-50 md:p-8 p-4 pt-16 md:pt-8 pb-28 md:pb-8 min-w-0">
         <Outlet />
       </main>
 

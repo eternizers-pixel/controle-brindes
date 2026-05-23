@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Power, PowerOff } from 'lucide-react';
+import { Power, PowerOff, Trash2 } from 'lucide-react';
 import Modal from './Modal';
-import { criarBrinde, atualizarBrinde } from '../api/client';
+import { criarBrinde, atualizarBrinde, excluirBrinde } from '../api/client';
 
 export default function BrindeFormModal({ open, brinde, onClose, onSaved }) {
   const isEdit = Boolean(brinde?.id);
@@ -83,6 +83,25 @@ export default function BrindeFormModal({ open, brinde, onClose, onSaved }) {
     submit(novo);
   };
 
+  const excluir = async () => {
+    if (!isEdit) return;
+    const msg = `Tem certeza que deseja EXCLUIR o brinde "${brinde.nome}"?\n\n` +
+                `Esta ação remove o brinde e TODO o histórico de entradas/saídas dele.\n` +
+                `Não dá pra desfazer.\n\n` +
+                `Se preferir manter o histórico, use "Inativar".`;
+    if (!window.confirm(msg)) return;
+    setLoading(true);
+    try {
+      await excluirBrinde(brinde.id);
+      onSaved?.();
+      onClose();
+    } catch (e) {
+      setErr(e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <Modal
       open={open}
@@ -92,15 +111,25 @@ export default function BrindeFormModal({ open, brinde, onClose, onSaved }) {
       footer={
         <>
           {isEdit && (
-            <button
-              type="button"
-              className={`btn ${form.status === 'ativo' ? 'btn-outline text-rose-600 border-rose-200 hover:bg-rose-50' : 'btn-outline text-emerald-600 border-emerald-200 hover:bg-emerald-50'} mr-auto`}
-              onClick={toggleStatus}
-              disabled={loading}
-              title={form.status === 'ativo' ? 'Inativar este brinde' : 'Reativar este brinde'}
-            >
-              {form.status === 'ativo' ? <><PowerOff size={15}/> Inativar</> : <><Power size={15}/> Reativar</>}
-            </button>
+            <div className="w-full sm:w-auto sm:mr-auto flex flex-wrap gap-2">
+              <button
+                type="button"
+                className={`btn ${form.status === 'ativo' ? 'btn-outline text-rose-600 border-rose-200 hover:bg-rose-50' : 'btn-outline text-emerald-600 border-emerald-200 hover:bg-emerald-50'}`}
+                onClick={toggleStatus}
+                disabled={loading}
+              >
+                {form.status === 'ativo' ? <><PowerOff size={15}/> Inativar</> : <><Power size={15}/> Reativar</>}
+              </button>
+              <button
+                type="button"
+                className="btn btn-outline text-rose-700 border-rose-300 hover:bg-rose-50"
+                onClick={excluir}
+                disabled={loading}
+                title="Excluir definitivamente este brinde"
+              >
+                <Trash2 size={15}/> Excluir
+              </button>
+            </div>
           )}
           <button className="btn-ghost" onClick={onClose} disabled={loading}>Cancelar</button>
           <button className="btn-primary" onClick={() => submit()} disabled={loading}>

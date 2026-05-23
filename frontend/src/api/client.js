@@ -42,7 +42,10 @@ export async function getBrindes({ search = '', status, categoria } = {}) {
     .order('nome');
   if (status)    q = q.eq('status', status);
   if (categoria) q = q.eq('categoria_id', categoria);
-  if (search)    q = q.ilike('nome', `%${search}%`);
+  if (search) {
+    const s = String(search).trim().replace(/[,()*%]/g, '');  // sanitize
+    if (s) q = q.or(`nome.ilike.%${s}%,codigo.ilike.%${s}%`);
+  }
   const rows = await handle(q);
   return (rows || []).map(enriquecerBrinde);
 }
@@ -56,7 +59,7 @@ export const getBrinde = async (id) => {
 
 export async function criarBrinde(payload) {
   const {
-    nome, descricao, foto, categoria_id,
+    nome, descricao, foto, categoria_id, codigo,
     quantidade_estoque = 0, estoque_minimo = 5, custo_unitario = 0, status = 'ativo',
   } = payload;
 
@@ -65,6 +68,7 @@ export async function criarBrinde(payload) {
     descricao: descricao || null,
     foto: foto || null,
     categoria_id: categoria_id || null,
+    codigo: (codigo && String(codigo).trim()) || null,
     quantidade_estoque: Number(quantidade_estoque),
     estoque_minimo: Number(estoque_minimo),
     custo_unitario: Number(custo_unitario),
@@ -89,6 +93,7 @@ export async function atualizarBrinde(id, payload) {
   const patch = { ...payload };
   delete patch.quantidade_estoque;  // só via movimentações
   if ('categoria_id' in patch) patch.categoria_id = patch.categoria_id || null;
+  if ('codigo' in patch) patch.codigo = (patch.codigo && String(patch.codigo).trim()) || null;
   patch.atualizado_em = new Date().toISOString();
   return await handle(
     supabase.from('brindes').update(patch).eq('id', id).select().single()
@@ -140,14 +145,15 @@ export async function registrarEntrada(d) {
 }
 
 export async function registrarSaida(d) {
+  const clean = (v) => (v && String(v).trim()) || null;
   return await handle(supabase.rpc('registrar_saida', {
     p_brinde_id:        d.brinde_id,
     p_quantidade:       d.quantidade,
-    p_data:             d.data,
-    p_destinatario:     d.destinatario_nome,
-    p_tipo_solicitante: d.tipo_solicitante,
-    p_responsavel:      d.responsavel,
-    p_observacao:       d.observacao || null,
+    p_data:             d.data || new Date().toISOString().slice(0, 10),
+    p_destinatario:     clean(d.destinatario_nome),
+    p_tipo_solicitante: clean(d.tipo_solicitante),
+    p_responsavel:      clean(d.responsavel),
+    p_observacao:       clean(d.observacao),
   }));
 }
 
@@ -218,6 +224,28 @@ export async function getDashboard() {
     .sort((a, b) => a.quantidade_estoque - b.quantidade_estoque)
     .slice(0, 10);
 
+  // faixas de custo
+  const FAIXAS = [
+    { label: 'Até R$ 10',           min: 0,   max: 10 },
+    { label: 'R$ 10 — R$ 20',       min: 10,  max: 20 },
+    { label: 'R$ 20 — R$ 40',       min: 20,  max: 40 },
+    { label: 'R$ 40 — R$ 60',       min: 40,  max: 60 },
+    { label: 'R$ 60 — R$ 100',      min: 60,  max: 100 },
+    { label: 'Acima de R$ 100',     min: 100, max: Infinity },
+  ];
+  const faixas_custo = FAIXAS.map((f) => {
+    const inFaixa = lista.filter((b) => {
+      const c = Number(b.custo_unitario || 0);
+      return c >= f.min && c < f.max;
+    });
+    return {
+      label: f.label,
+      count: inFaixa.length,
+      unidades: inFaixa.reduce((s, b) => s + (b.quantidade_estoque || 0), 0),
+      valor_total: inFaixa.reduce((s, b) => s + (b.quantidade_estoque || 0) * Number(b.custo_unitario || 0), 0),
+    };
+  });
+
   // últimas saídas
   const ultimas_saidas = movs
     .filter((m) => m.tipo === 'saida')
@@ -234,6 +262,7 @@ export async function getDashboard() {
       custo_entregues_mes: custoEntreguesMes,
     },
     mais_entregues, top_destinatarios, saidas_por_tipo, estoque_baixo, ultimas_saidas,
+    faixas_custo,
   };
 }
 

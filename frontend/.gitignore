@@ -1,0 +1,8 @@
+node_modules
+dist
+.vite
+# .env contém as chaves do Supabase — fique à vontade para versioná-lo se a
+# chave é "publishable" (sb_publishable_…) e o RLS está adequado.
+# Padrão seguro: NÃO versionar.
+.env
+.env.local

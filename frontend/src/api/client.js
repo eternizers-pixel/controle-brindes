@@ -104,6 +104,10 @@ export async function atualizarBrinde(id, payload) {
 export const inativarBrinde = (id) =>
   handle(supabase.from('brindes').update({ status: 'inativo' }).eq('id', id));
 
+// Hard delete = remove o brinde e TODAS as movimentações (CASCADE no schema)
+export const excluirBrinde = (id) =>
+  handle(supabase.from('brindes').delete().eq('id', id));
+
 /* ===================================================================
    MOVIMENTAÇÕES
 =================================================================== */

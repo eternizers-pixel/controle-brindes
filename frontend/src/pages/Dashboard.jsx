@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
-  Package, Boxes, DollarSign, TrendingUp, AlertTriangle, Calendar,
+  Package, Boxes, DollarSign, TrendingUp, AlertTriangle, Calendar, Tag,
 } from 'lucide-react';
 import { Bar, Doughnut } from 'react-chartjs-2';
 import {
@@ -21,13 +21,13 @@ export default function Dashboard() {
 
   useEffect(() => {
     setLoading(true);
-    getDashboard().then(setData).finally(() => setLoading(false));
+    getDashboard().then(setData).catch(() => setData(null)).finally(() => setLoading(false));
   }, []);
 
   if (loading) return <div className="text-slate-500">Carregando dashboard…</div>;
   if (!data) return <div>Erro ao carregar.</div>;
 
-  const { totais, mais_entregues, saidas_por_tipo, estoque_baixo, ultimas_saidas, top_destinatarios } = data;
+  const { totais, mais_entregues, saidas_por_tipo, estoque_baixo, ultimas_saidas, top_destinatarios, faixas_custo = [] } = data;
 
   const barData = {
     labels: mais_entregues.map((b) => b.nome),
@@ -48,6 +48,8 @@ export default function Dashboard() {
     }],
   };
 
+  const maxFaixaCount = Math.max(1, ...faixas_custo.map((f) => f.count));
+
   return (
     <div className="space-y-6">
       <header>
@@ -62,24 +64,57 @@ export default function Dashboard() {
         <StatCard icon={TrendingUp}  label="Entregues no mês"       value={formatInt(totais.entregues_no_mes)}               accent="violet" />
       </div>
 
+      {/* Faixas de custo dos brindes */}
+      <div className="card p-5">
+        <h3 className="font-semibold text-slate-800 mb-1 flex items-center gap-2">
+          <Tag size={18} className="text-brand-500" /> Brindes por faixa de custo
+        </h3>
+        <p className="text-xs text-slate-500 mb-4">Distribuição com base no custo unitário</p>
+        {faixas_custo.every((f) => f.count === 0) ? (
+          <div className="text-slate-400 text-sm">Nenhum brinde cadastrado ainda.</div>
+        ) : (
+          <div className="space-y-2.5">
+            {faixas_custo.map((f) => (
+              <div key={f.label} className="flex items-center gap-3 text-sm">
+                <span className="w-28 sm:w-36 text-slate-600 text-xs sm:text-sm flex-shrink-0">{f.label}</span>
+                <div className="flex-1 bg-slate-100 rounded-full h-6 overflow-hidden relative">
+                  <div
+                    className="bg-brand-500 h-full rounded-full transition-all"
+                    style={{ width: `${(f.count / maxFaixaCount) * 100}%`, minWidth: f.count > 0 ? '4px' : '0' }}
+                  />
+                  {f.unidades > 0 && (
+                    <span className="absolute inset-0 flex items-center px-3 text-xs text-white font-semibold mix-blend-difference">
+                      {formatInt(f.unidades)} un · {formatBRL(f.valor_total)}
+                    </span>
+                  )}
+                </div>
+                <span className="w-10 text-right font-semibold text-slate-700">{f.count}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="card p-5 lg:col-span-2">
           <h3 className="font-semibold text-slate-800 mb-4">Brindes mais entregues</h3>
           {mais_entregues.length === 0
             ? <div className="text-slate-400 text-sm">Sem saídas registradas ainda.</div>
-            : <Bar data={barData} options={{
+            : <div style={{ height: 280 }}><Bar data={barData} options={{
+                responsive: true, maintainAspectRatio: false,
                 plugins: { legend: { display: false } },
                 scales: { y: { beginAtZero: true } },
-              }} />}
+              }} /></div>}
         </div>
 
         <div className="card p-5">
           <h3 className="font-semibold text-slate-800 mb-4">Saídas por tipo de solicitante</h3>
           {saidas_por_tipo.length === 0
             ? <div className="text-slate-400 text-sm">Sem dados.</div>
-            : <Doughnut data={pieData} options={{
+            : <div style={{ height: 280 }}><Doughnut data={pieData} options={{
+                responsive: true, maintainAspectRatio: false,
                 plugins: { legend: { position: 'bottom' } },
-              }} />}
+              }} /></div>}
         </div>
       </div>
 
@@ -89,7 +124,7 @@ export default function Dashboard() {
             <h3 className="font-semibold text-slate-800 flex items-center gap-2">
               <AlertTriangle className="text-amber-500" size={18} /> Alertas de estoque baixo
             </h3>
-            <span className="badge-yellow badge">{estoque_baixo.length}</span>
+            <span className="badge bg-amber-100 text-amber-700">{estoque_baixo.length}</span>
           </div>
           {estoque_baixo.length === 0 ? (
             <div className="text-slate-400 text-sm">Tudo certo! Nenhum brinde com estoque baixo.</div>
@@ -122,7 +157,7 @@ export default function Dashboard() {
                     <span className="text-rose-600 font-semibold">−{s.quantidade}</span>
                   </div>
                   <div className="text-xs text-slate-500">
-                    {formatDate(s.data)} · {s.destinatario_nome} ({labelTipo(s.tipo_solicitante)})
+                    {formatDate(s.data)} · {s.destinatario_nome || 'sem destinatário'} {s.tipo_solicitante ? `(${labelTipo(s.tipo_solicitante)})` : ''}
                   </div>
                 </li>
               ))}
@@ -136,20 +171,22 @@ export default function Dashboard() {
         {top_destinatarios.length === 0 ? (
           <div className="text-slate-400 text-sm">Sem dados ainda.</div>
         ) : (
-          <table className="w-full text-sm">
-            <thead className="text-slate-500 text-xs uppercase border-b border-slate-100">
-              <tr><th className="text-left py-2">Destinatário</th><th className="text-left">Tipo</th><th className="text-right">Unidades</th></tr>
-            </thead>
-            <tbody>
-              {top_destinatarios.map((d, i) => (
-                <tr key={i} className="border-b border-slate-50 last:border-0">
-                  <td className="py-2">{d.nome}</td>
-                  <td className="text-slate-600">{labelTipo(d.tipo)}</td>
-                  <td className="text-right font-semibold">{formatInt(d.total)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm min-w-[400px]">
+              <thead className="text-slate-500 text-xs uppercase border-b border-slate-100">
+                <tr><th className="text-left py-2">Destinatário</th><th className="text-left">Tipo</th><th className="text-right">Unidades</th></tr>
+              </thead>
+              <tbody>
+                {top_destinatarios.map((d, i) => (
+                  <tr key={i} className="border-b border-slate-50 last:border-0">
+                    <td className="py-2">{d.nome}</td>
+                    <td className="text-slate-600">{labelTipo(d.tipo)}</td>
+                    <td className="text-right font-semibold">{formatInt(d.total)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>

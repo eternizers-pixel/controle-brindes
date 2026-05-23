@@ -4,7 +4,9 @@
 import { supabase } from '../lib/supabase';
 
 /* ---------- helpers ---------- */
-const handle = ({ data, error }) => {
+// Aceita tanto o builder do supabase (PromiseLike) quanto o resultado já resolvido.
+const handle = async (q) => {
+  const { data, error } = await q;
   if (error) throw new Error(error.message || error.details || JSON.stringify(error));
   return data;
 };

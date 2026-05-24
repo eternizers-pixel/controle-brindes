@@ -165,6 +165,41 @@ export const removerMovimentacao = (id) =>
   handle(supabase.rpc('estornar_movimentacao', { p_id: id }));
 
 /* ===================================================================
+   PATROCÍNIOS
+=================================================================== */
+export async function getPatrocinios({ search = '', ativo } = {}) {
+  let q = supabase.from('patrocinios').select('*').order('nome');
+  if (ativo !== undefined) q = q.eq('ativo', ativo);
+  if (search) {
+    const s = String(search).trim().replace(/[,()*%]/g, '');
+    if (s) q = q.ilike('nome', `%${s}%`);
+  }
+  return (await handle(q)) || [];
+}
+
+export async function criarPatrocinio(payload) {
+  return await handle(supabase.from('patrocinios').insert({
+    nome: String(payload.nome || '').trim(),
+    valor: Number(payload.valor || 0),
+    recorrencia: payload.recorrencia || 'unica',
+    data_inicio: payload.data_inicio,
+    data_fim: payload.data_fim || null,
+    categoria: payload.categoria || null,
+    observacao: payload.observacao || null,
+    ativo: payload.ativo !== false,
+  }).select().single());
+}
+
+export async function atualizarPatrocinio(id, payload) {
+  const patch = { ...payload, atualizado_em: new Date().toISOString() };
+  if ('valor' in patch) patch.valor = Number(patch.valor);
+  return await handle(supabase.from('patrocinios').update(patch).eq('id', id).select().single());
+}
+
+export const excluirPatrocinio = (id) =>
+  handle(supabase.from('patrocinios').delete().eq('id', id));
+
+/* ===================================================================
    DESTINATÁRIOS
 =================================================================== */
 export async function getDestinatarios({ search = '', tipo } = {}) {

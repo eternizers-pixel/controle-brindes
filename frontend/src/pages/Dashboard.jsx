@@ -1,15 +1,19 @@
 import { useEffect, useState } from 'react';
 import {
   Package, Boxes, DollarSign, TrendingUp, AlertTriangle, Calendar, Tag,
+  HandCoins, Repeat, PiggyBank,
 } from 'lucide-react';
 import { Bar, Doughnut } from 'react-chartjs-2';
 import {
   Chart as ChartJS, CategoryScale, LinearScale, BarElement,
   ArcElement, Tooltip, Legend, Title,
 } from 'chart.js';
-import { getDashboard } from '../api/client';
+import { getDashboard, getPatrocinios } from '../api/client';
 import StatCard from '../components/StatCard';
-import { formatBRL, formatInt, formatDate, labelTipo } from '../utils/helpers';
+import {
+  formatBRL, formatInt, formatDate, labelTipo,
+  labelRecorrencia, calcularInvestimentos,
+} from '../utils/helpers';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Legend, Title);
 
@@ -17,17 +21,29 @@ const PALETA = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'
 
 export default function Dashboard() {
   const [data, setData] = useState(null);
+  const [patrocinios, setPatrocinios] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setLoading(true);
-    getDashboard().then(setData).catch(() => setData(null)).finally(() => setLoading(false));
+    Promise.all([getDashboard(), getPatrocinios({ ativo: true })])
+      .then(([d, p]) => { setData(d); setPatrocinios(p); })
+      .catch(() => setData(null))
+      .finally(() => setLoading(false));
   }, []);
 
   if (loading) return <div className="text-slate-500">Carregando dashboard…</div>;
   if (!data) return <div>Erro ao carregar.</div>;
 
   const { totais, mais_entregues, saidas_por_tipo, estoque_baixo, ultimas_saidas, top_destinatarios, faixas_custo = [] } = data;
+
+  // métricas de patrocínios
+  const invest = calcularInvestimentos(patrocinios);
+  const topPatrocinados = [...patrocinios]
+    .sort((a, b) => Number(b.valor) - Number(a.valor))
+    .slice(0, 5);
+
+  const totalSocialMes = Number(totais.custo_entregues_mes || 0) + invest.mensal;
 
   const barData = {
     labels: mais_entregues.map((b) => b.nome),
@@ -54,15 +70,59 @@ export default function Dashboard() {
     <div className="space-y-6">
       <header>
         <h1 className="text-2xl font-bold text-slate-800">Dashboard</h1>
-        <p className="text-slate-500 text-sm">Visão geral do estoque e das entregas</p>
+        <p className="text-slate-500 text-sm">Visão geral do estoque, doações e patrocínios</p>
       </header>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard icon={Package}     label="Brindes cadastrados"    value={formatInt(totais.brindes_cadastrados)}            accent="brand" />
-        <StatCard icon={Boxes}       label="Unidades em estoque"    value={formatInt(totais.unidades_em_estoque)}            accent="sky" />
-        <StatCard icon={DollarSign}  label="Investido em estoque"   value={formatBRL(totais.valor_total_investido)}          accent="green" />
-        <StatCard icon={TrendingUp}  label="Entregues no mês"       value={formatInt(totais.entregues_no_mes)}               accent="violet" />
+      {/* Métricas de brindes */}
+      <div>
+        <h2 className="text-xs font-semibold uppercase text-slate-500 mb-2">Brindes</h2>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard icon={Package}     label="Brindes cadastrados"    value={formatInt(totais.brindes_cadastrados)}            accent="brand" />
+          <StatCard icon={Boxes}       label="Unidades em estoque"    value={formatInt(totais.unidades_em_estoque)}            accent="sky" />
+          <StatCard icon={DollarSign}  label="Investido em estoque"   value={formatBRL(totais.valor_total_investido)}          accent="green" />
+          <StatCard icon={TrendingUp}  label="Entregues no mês"       value={formatInt(totais.entregues_no_mes)}               accent="violet" />
+        </div>
       </div>
+
+      {/* Métricas de patrocínios */}
+      <div>
+        <h2 className="text-xs font-semibold uppercase text-slate-500 mb-2">Patrocínios</h2>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard icon={HandCoins}  label="Patrocínios ativos"     value={formatInt(patrocinios.length)}    accent="violet" />
+          <StatCard icon={Repeat}     label="Mensal recorrente"      value={formatBRL(invest.mensal)}        accent="brand" />
+          <StatCard icon={Calendar}   label="Investido no ano"       value={formatBRL(invest.totalAno)}      accent="green" />
+          <StatCard icon={PiggyBank}  label="Investido histórico"    value={formatBRL(invest.total)}         accent="amber" />
+        </div>
+      </div>
+
+      {/* Investimento social total */}
+      <div className="card p-5 bg-gradient-to-br from-brand-50 to-violet-50 border-brand-100">
+        <div className="text-xs font-semibold uppercase text-slate-600 mb-1">Investimento social neste mês</div>
+        <div className="text-3xl font-bold text-brand-700">{formatBRL(totalSocialMes)}</div>
+        <div className="text-xs text-slate-600 mt-1">
+          {formatBRL(totais.custo_entregues_mes || 0)} em brindes entregues + {formatBRL(invest.mensal)} em patrocínios mensais
+        </div>
+      </div>
+
+      {/* Top patrocinados */}
+      {topPatrocinados.length > 0 && (
+        <div className="card p-5">
+          <h3 className="font-semibold text-slate-800 mb-3 flex items-center gap-2">
+            <HandCoins size={18} className="text-violet-500" /> Top patrocinados
+          </h3>
+          <ul className="divide-y divide-slate-100">
+            {topPatrocinados.map((p) => (
+              <li key={p.id} className="py-2 flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="text-sm font-medium text-slate-800 truncate">{p.nome}</div>
+                  <div className="text-xs text-slate-500">{labelRecorrencia(p.recorrencia)}{p.categoria ? ` · ${p.categoria}` : ''}</div>
+                </div>
+                <div className="text-sm font-semibold text-slate-700 flex-shrink-0">{formatBRL(p.valor)}</div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* Faixas de custo dos brindes */}
       <div className="card p-5">
@@ -110,7 +170,7 @@ export default function Dashboard() {
         </div>
 
         <div className="card p-5">
-          <h3 className="font-semibold text-slate-800 mb-4">Saídas por tipo de solicitante</h3>
+          <h3 className="font-semibold text-slate-800 mb-4">Saídas por tipo</h3>
           {saidas_por_tipo.length === 0
             ? <div className="text-slate-400 text-sm">Sem dados.</div>
             : <div style={{ height: 280 }}><Doughnut data={pieData} options={{
@@ -129,7 +189,7 @@ export default function Dashboard() {
             <span className="badge bg-amber-100 text-amber-700">{estoque_baixo.length}</span>
           </div>
           {estoque_baixo.length === 0 ? (
-            <div className="text-slate-400 text-sm">Tudo certo! Nenhum brinde com estoque baixo.</div>
+            <div className="text-slate-400 text-sm">Tudo certo!</div>
           ) : (
             <ul className="divide-y divide-slate-100">
               {estoque_baixo.map((b) => (

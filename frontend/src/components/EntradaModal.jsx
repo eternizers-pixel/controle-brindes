@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react';
 import Modal from './Modal';
 import { registrarEntrada } from '../api/client';
 import { hoje } from '../utils/helpers';
+import { useToast } from './Toast';
 
 export default function EntradaModal({ open, brinde, onClose, onSaved }) {
+  const toast = useToast();
   const [form, setForm] = useState({ quantidade: '', data: hoje(), observacao: '' });
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState('');
@@ -30,10 +32,13 @@ export default function EntradaModal({ open, brinde, onClose, onSaved }) {
         data: form.data,
         observacao: form.observacao || null,
       });
+      toast.success(`+${qty} ${qty > 1 ? 'unidades' : 'unidade'} adicionada(s) a "${brinde.nome}"`);
       onSaved?.();
       onClose();
     } catch (e) {
-      setErr(e.response?.data?.error || e.message);
+      const msg = e.response?.data?.error || e.message;
+      setErr(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }

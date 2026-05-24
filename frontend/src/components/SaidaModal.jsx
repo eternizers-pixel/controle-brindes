@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react';
 import Modal from './Modal';
 import { registrarSaida, getDestinatarios } from '../api/client';
 import { hoje, TIPOS_SOLICITANTE } from '../utils/helpers';
+import { useToast } from './Toast';
 
 export default function SaidaModal({ open, brinde, onClose, onSaved }) {
+  const toast = useToast();
   const [form, setForm] = useState({
     quantidade: '', data: hoje(),
     destinatario_nome: '', tipo_solicitante: '',
@@ -45,10 +47,13 @@ export default function SaidaModal({ open, brinde, onClose, onSaved }) {
         responsavel: null,
         observacao: form.observacao || null,
       });
+      toast.success(`Saída de ${qty} ${qty > 1 ? 'unidades' : 'unidade'} de "${brinde.nome}" registrada!`);
       onSaved?.();
       onClose();
     } catch (e) {
-      setErr(e.response?.data?.error || e.message);
+      const msg = e.response?.data?.error || e.message;
+      setErr(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }

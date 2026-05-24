@@ -1,18 +1,20 @@
 import { NavLink, Outlet, Link } from 'react-router-dom';
 import {
-  Home as HomeIcon, Package, History, FileText, Gift, HandHeart, BarChart3,
+  Home as HomeIcon, Package, History, FileText, Gift, HandHeart, BarChart3, HandCoins,
 } from 'lucide-react';
 
 const links = [
-  { to: '/',              label: 'Início',         icon: HomeIcon },
-  { to: '/doacao',        label: 'Doação',         icon: HandHeart },
-  { to: '/brindes',       label: 'Brindes',        icon: Package },
-  { to: '/dashboard',     label: 'Dashboard',      icon: BarChart3 },
-  { to: '/movimentacoes', label: 'Histórico',      icon: History },
-  { to: '/relatorios',    label: 'Relatórios',     icon: FileText },
+  { to: '/',              label: 'Início',              mobile: 'Início',    icon: HomeIcon },
+  { to: '/doacao',        label: 'Realizar Doação',     mobile: 'Doação',    icon: HandHeart },
+  { to: '/brindes',       label: 'Cadastro de Brindes', mobile: 'Brindes',   icon: Package },
+  { to: '/patrocinios',   label: 'Patrocínios',         mobile: 'Patroc.',   icon: HandCoins },
+  { to: '/dashboard',     label: 'Dashboard',           mobile: 'Dashboard', icon: BarChart3 },
+  { to: '/movimentacoes', label: 'Histórico',           mobile: 'Histórico', icon: History },
+  { to: '/relatorios',    label: 'Relatórios',          mobile: 'Relat.',    icon: FileText },
 ];
 
-const mobileLinks = links.filter((l) => l.to !== '/relatorios');  // 5 itens cabem na nav mobile
+// 5 mais usados na nav inferior do mobile
+const mobileLinks = links.filter((l) => ['/', '/doacao', '/brindes', '/patrocinios', '/dashboard'].includes(l.to));
 
 export default function Layout() {
   return (
@@ -64,7 +66,7 @@ export default function Layout() {
 
       {/* Bottom nav mobile */}
       <nav className="md:hidden fixed bottom-0 inset-x-0 bg-white border-t border-slate-200 grid grid-cols-5 z-30">
-        {mobileLinks.map(({ to, label, icon: Icon }) => (
+        {mobileLinks.map(({ to, mobile, icon: Icon }) => (
           <NavLink
             key={to}
             to={to}
@@ -74,7 +76,7 @@ export default function Layout() {
                 isActive ? 'text-brand-700' : 'text-slate-500'
               }`}
           >
-            <Icon size={18} /> {label}
+            <Icon size={18} /> {mobile}
           </NavLink>
         ))}
       </nav>

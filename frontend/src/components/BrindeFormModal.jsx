@@ -3,8 +3,10 @@ import { Power, PowerOff, Trash2, Plus } from 'lucide-react';
 import Modal from './Modal';
 import { criarBrinde, atualizarBrinde, excluirBrinde } from '../api/client';
 import EntradaModal from './EntradaModal';
+import { useToast } from './Toast';
 
 export default function BrindeFormModal({ open, brinde, onClose, onSaved }) {
+  const toast = useToast();
   const isEdit = Boolean(brinde?.id);
   const [form, setForm] = useState({
     nome: '', codigo: '', descricao: '',
@@ -71,10 +73,12 @@ export default function BrindeFormModal({ open, brinde, onClose, onSaved }) {
 
       if (isEdit) await atualizarBrinde(brinde.id, payload);
       else await criarBrinde(payload);
+      toast.success(isEdit ? `Brinde "${form.nome}" atualizado!` : `Brinde "${form.nome}" cadastrado!`);
       onSaved?.();
       onClose();
     } catch (e) {
       setErr(e.message);
+      toast.error(e.message);
     } finally {
       setLoading(false);
     }
@@ -95,10 +99,12 @@ export default function BrindeFormModal({ open, brinde, onClose, onSaved }) {
     setLoading(true);
     try {
       await excluirBrinde(brinde.id);
+      toast.success(`Brinde "${brinde.nome}" excluído.`);
       onSaved?.();
       onClose();
     } catch (e) {
       setErr(e.message);
+      toast.error(e.message);
     } finally {
       setLoading(false);
     }

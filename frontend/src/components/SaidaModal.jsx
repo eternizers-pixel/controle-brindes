@@ -58,7 +58,7 @@ export default function SaidaModal({ open, brinde, onClose, onSaved }) {
     <Modal
       open={open}
       onClose={onClose}
-      size="lg"
+      size="md"
       title={`Saída — ${brinde?.nome || ''}`}
       footer={
         <>

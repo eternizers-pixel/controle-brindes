@@ -14,11 +14,11 @@ export default function Modal({ open, onClose, title, children, footer, size = '
   }, [open, onClose]);
 
   if (!open) return null;
-  // Cresce gradualmente: full no mobile, limita só em telas maiores
+  // Larguras mais enxutas
   const widths = {
-    sm: 'sm:max-w-sm',
-    md: 'sm:max-w-lg',
-    lg: 'sm:max-w-2xl',
+    sm: 'sm:max-w-xs',     // 320px
+    md: 'sm:max-w-sm',     // 384px
+    lg: 'sm:max-w-md',     // 448px
   };
 
   return (
@@ -30,15 +30,15 @@ export default function Modal({ open, onClose, title, children, footer, size = '
         className={`bg-white w-full ${widths[size]} max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col rounded-t-2xl sm:rounded-2xl shadow-soft`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-4 sm:px-5 py-3 sm:py-4 border-b border-slate-100">
-          <h2 className="font-semibold text-slate-800 truncate pr-2">{title}</h2>
+        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
+          <h2 className="font-semibold text-slate-800 text-sm sm:text-base truncate pr-2">{title}</h2>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-700 flex-shrink-0">
-            <X size={20} />
+            <X size={18} />
           </button>
         </div>
-        <div className="p-4 sm:p-5 overflow-y-auto flex-1">{children}</div>
+        <div className="p-4 overflow-y-auto flex-1">{children}</div>
         {footer && (
-          <div className="px-4 sm:px-5 py-3 bg-slate-50 border-t border-slate-100 flex flex-wrap justify-end gap-2">
+          <div className="px-4 py-3 bg-slate-50 border-t border-slate-100 flex flex-wrap justify-end gap-2">
             {footer}
           </div>
         )}

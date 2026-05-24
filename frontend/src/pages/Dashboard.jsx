@@ -73,22 +73,24 @@ export default function Dashboard() {
         {faixas_custo.every((f) => f.count === 0) ? (
           <div className="text-slate-400 text-sm">Nenhum brinde cadastrado ainda.</div>
         ) : (
-          <div className="space-y-2.5">
+          <div className="space-y-3">
             {faixas_custo.map((f) => (
-              <div key={f.label} className="flex items-center gap-3 text-sm">
-                <span className="w-28 sm:w-36 text-slate-600 text-xs sm:text-sm flex-shrink-0">{f.label}</span>
-                <div className="flex-1 bg-slate-100 rounded-full h-6 overflow-hidden relative">
-                  <div
-                    className="bg-brand-500 h-full rounded-full transition-all"
-                    style={{ width: `${(f.count / maxFaixaCount) * 100}%`, minWidth: f.count > 0 ? '4px' : '0' }}
-                  />
-                  {f.unidades > 0 && (
-                    <span className="absolute inset-0 flex items-center px-3 text-xs text-white font-semibold mix-blend-difference">
+              <div key={f.label} className="flex items-start gap-3">
+                <div className="w-28 sm:w-32 flex-shrink-0">
+                  <div className="text-xs sm:text-sm font-medium text-slate-700">{f.label}</div>
+                  {f.count > 0 && (
+                    <div className="text-[11px] text-slate-500 mt-0.5">
                       {formatInt(f.unidades)} un · {formatBRL(f.valor_total)}
-                    </span>
+                    </div>
                   )}
                 </div>
-                <span className="w-10 text-right font-semibold text-slate-700">{f.count}</span>
+                <div className="flex-1 mt-1.5 bg-slate-100 rounded-full h-2.5 overflow-hidden">
+                  <div
+                    className="bg-brand-500 h-full rounded-full transition-all"
+                    style={{ width: `${(f.count / maxFaixaCount) * 100}%`, minWidth: f.count > 0 ? '6px' : '0' }}
+                  />
+                </div>
+                <span className="w-8 text-right text-sm font-semibold text-slate-700 mt-0.5">{f.count}</span>
               </div>
             ))}
           </div>

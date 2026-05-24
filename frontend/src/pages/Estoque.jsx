@@ -1,99 +1,101 @@
+// Tela "Realizar Doação" — fluxo simples para dar baixa em brindes
 import { useEffect, useState } from 'react';
-import { Search, Plus, AlertTriangle } from 'lucide-react';
+import { Search, HandHeart, Package2 } from 'lucide-react';
 import { getBrindes } from '../api/client';
-import BrindeCard from '../components/BrindeCard';
-import EntradaModal from '../components/EntradaModal';
+import { formatInt, nivelClass, nivelLabel } from '../utils/helpers';
 import SaidaModal from '../components/SaidaModal';
-import BrindeFormModal from '../components/BrindeFormModal';
 
 export default function Estoque() {
   const [brindes, setBrindes] = useState([]);
   const [busca, setBusca] = useState('');
-  const [statusFilter, setStatusFilter] = useState('ativo');
   const [loading, setLoading] = useState(true);
-
-  const [entradaFor, setEntradaFor] = useState(null);
-  const [saidaFor,   setSaidaFor]   = useState(null);
-  const [editFor,    setEditFor]    = useState(null);
-  const [novoOpen,   setNovoOpen]   = useState(false);
+  const [saidaFor, setSaidaFor] = useState(null);
 
   const load = async () => {
     setLoading(true);
     try {
-      const data = await getBrindes({ search: busca, status: statusFilter || undefined });
+      const data = await getBrindes({ search: busca, status: 'ativo' });
       setBrindes(data);
     } finally { setLoading(false); }
   };
-
-  useEffect(() => { load(); }, [statusFilter]);
-  useEffect(() => {
-    const t = setTimeout(load, 250);
-    return () => clearTimeout(t);
-  }, [busca]);
-
-  const baixos = brindes.filter((b) => b.nivel_estoque !== 'saudavel').length;
+  useEffect(() => { load(); }, []);
+  useEffect(() => { const t = setTimeout(load, 250); return () => clearTimeout(t); }, [busca]);
 
   return (
-    <div className="space-y-6">
-      <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800">Estoque</h1>
-          <p className="text-slate-500 text-sm">Gerencie entradas e saídas dos brindes</p>
+    <div className="space-y-4 max-w-3xl mx-auto">
+      <header className="text-center">
+        <div className="inline-flex w-12 h-12 rounded-full bg-rose-500 text-white items-center justify-center mb-2">
+          <HandHeart size={22} />
         </div>
-        <button className="btn-primary" onClick={() => setNovoOpen(true)}>
-          <Plus size={16} /> Novo brinde
-        </button>
+        <h1 className="text-xl sm:text-2xl font-bold text-slate-800">Realizar Doação</h1>
+        <p className="text-slate-500 text-sm">Toque em um brinde para dar baixa no estoque</p>
       </header>
 
-      {baixos > 0 && (
-        <div className="bg-amber-50 border border-amber-200 text-amber-800 rounded-xl px-4 py-3 flex items-center gap-2 text-sm">
-          <AlertTriangle size={16} />
-          <strong>{baixos}</strong> brinde(s) com estoque baixo ou zerado — confira abaixo.
-        </div>
-      )}
-
-      <div className="card p-4 flex flex-col md:flex-row gap-3">
-        <div className="flex-1 relative">
+      <div className="card p-3">
+        <div className="relative">
           <Search className="absolute left-3 top-2.5 text-slate-400" size={16} />
           <input
             className="input pl-9"
-            placeholder="Pesquisar brinde pelo nome…"
+            placeholder="Pesquisar por nome ou código…"
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
+            autoFocus
           />
         </div>
-        <select className="input md:w-48" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-          <option value="">Todos os status</option>
-          <option value="ativo">Apenas ativos</option>
-          <option value="inativo">Apenas inativos</option>
-        </select>
       </div>
 
       {loading ? (
         <div className="text-slate-500">Carregando…</div>
       ) : brindes.length === 0 ? (
         <div className="card p-10 text-center text-slate-500">
-          Nenhum brinde encontrado.
+          {busca ? 'Nenhum brinde encontrado.' : 'Nenhum brinde cadastrado ainda.'}
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {brindes.map((b) => (
-            <BrindeCard
-              key={b.id} brinde={b}
-              onEntrada={setEntradaFor}
-              onSaida={setSaidaFor}
-              onEdit={setEditFor}
-            />
-          ))}
+        <div className="space-y-2">
+          {brindes.map((b) => {
+            const sem = b.quantidade_estoque <= 0;
+            return (
+              <button
+                key={b.id}
+                type="button"
+                onClick={() => !sem && setSaidaFor(b)}
+                disabled={sem}
+                className={`card p-3 w-full text-left flex items-center gap-3 transition-all ${
+                  sem ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-soft active:scale-[.99] hover:bg-rose-50'
+                }`}
+              >
+                {b.foto ? (
+                  <img src={b.foto} alt="" className="w-14 h-14 rounded-lg object-cover flex-shrink-0" />
+                ) : (
+                  <div className="w-14 h-14 rounded-lg bg-slate-100 grid place-items-center text-slate-300 flex-shrink-0">
+                    <Package2 size={22} />
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-semibold text-slate-800 truncate">{b.nome}</span>
+                    <span className={nivelClass(b.nivel_estoque)}>{nivelLabel(b.nivel_estoque)}</span>
+                  </div>
+                  {b.codigo && (
+                    <div className="text-xs text-slate-500 mt-0.5">cód. {b.codigo}</div>
+                  )}
+                  <div className="text-xs text-slate-500">
+                    Disponível: <span className={`font-semibold ${sem ? 'text-rose-600' : 'text-slate-700'}`}>{formatInt(b.quantidade_estoque)}</span>
+                  </div>
+                </div>
+                <div className="flex-shrink-0 text-rose-500 font-medium text-sm hidden sm:block">
+                  Dar baixa →
+                </div>
+              </button>
+            );
+          })}
         </div>
       )}
 
-      <EntradaModal open={!!entradaFor} brinde={entradaFor} onClose={() => setEntradaFor(null)} onSaved={load} />
-      <SaidaModal   open={!!saidaFor}   brinde={saidaFor}   onClose={() => setSaidaFor(null)}   onSaved={load} />
-      <BrindeFormModal
-        open={!!editFor || novoOpen}
-        brinde={editFor}
-        onClose={() => { setEditFor(null); setNovoOpen(false); }}
+      <SaidaModal
+        open={!!saidaFor}
+        brinde={saidaFor}
+        onClose={() => setSaidaFor(null)}
         onSaved={load}
       />
     </div>

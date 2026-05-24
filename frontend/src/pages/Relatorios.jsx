@@ -53,11 +53,11 @@ export default function Relatorios() {
     exportarPDF({
       titulo: 'Relatório de Saídas',
       subtitulo: `Período: ${periodo.inicio || '—'} a ${periodo.fim || '—'}  ·  Total: ${formatBRL(saidas.total_custo)}  ·  Unidades: ${saidas.total_unidades}`,
-      colunas: ['Data', 'Brinde', 'Qtd', 'Destinatário', 'Tipo', 'Responsável', 'Custo'],
+      colunas: ['Data', 'Brinde', 'Qtd', 'Destinatário', 'Tipo', 'Observação', 'Custo'],
       linhas: saidas.rows.map((r) => [
         formatDate(r.data), r.brinde, r.quantidade,
-        r.destinatario_nome, labelTipo(r.tipo_solicitante),
-        r.responsavel, formatBRL(r.custo_total),
+        r.destinatario_nome || '—', labelTipo(r.tipo_solicitante),
+        r.observacao || '', formatBRL(r.custo_total),
       ]),
     });
   };
@@ -67,8 +67,8 @@ export default function Relatorios() {
       sheetName: 'Saídas',
       dados: saidas.rows.map((r) => ({
         Data: r.data, Brinde: r.brinde, Quantidade: r.quantidade,
-        Destinatário: r.destinatario_nome, 'Tipo de solicitante': labelTipo(r.tipo_solicitante),
-        Responsável: r.responsavel, 'Custo unit.': r.custo_unitario, 'Custo total': r.custo_total,
+        Destinatário: r.destinatario_nome || '', 'Tipo de solicitante': labelTipo(r.tipo_solicitante),
+        'Custo unit.': r.custo_unitario, 'Custo total': r.custo_total,
         Observação: r.observacao || '',
       })),
     });

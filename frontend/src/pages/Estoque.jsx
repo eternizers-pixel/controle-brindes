@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { Search, Send, Package2 } from 'lucide-react';
 import { getBrindes } from '../api/client';
-import { formatInt, nivelClass, nivelLabel } from '../utils/helpers';
+import { formatInt } from '../utils/helpers';
 import SaidaModal from '../components/SaidaModal';
 
 export default function Estoque() {
@@ -65,7 +65,7 @@ export default function Estoque() {
                 }`}
               >
                 {/* Foto grande - destaque principal */}
-                <div className="relative aspect-square bg-slate-100">
+                <div className="aspect-square bg-slate-100">
                   {b.foto ? (
                     <img src={b.foto} alt="" className="w-full h-full object-cover" />
                   ) : (
@@ -73,10 +73,6 @@ export default function Estoque() {
                       <Package2 size={56} />
                     </div>
                   )}
-                  {/* Badge de nível no canto */}
-                  <div className="absolute top-2 left-2">
-                    <span className={nivelClass(b.nivel_estoque)}>{nivelLabel(b.nivel_estoque)}</span>
-                  </div>
                 </div>
 
                 {/* Info abaixo da foto */}

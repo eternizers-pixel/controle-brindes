@@ -92,19 +92,25 @@ export function agruparPorFormaPagamento(patrocinios = []) {
   return Object.values(out).filter((g) => g.count > 0);
 }
 
-// Calcula totais (já investido total, ano vigente, mensal recorrente)
+// Calcula totais (já investido total, ano vigente, mensal recorrente, únicos do mês, média mensal)
 export function calcularInvestimentos(patrocinios, hoje = new Date()) {
-  let total = 0;       // tudo já desembolsado historicamente
-  let totalAno = 0;    // desembolsado neste ano
-  let mensal = 0;      // mensal recorrente atual
+  let total = 0;        // tudo já desembolsado historicamente
+  let totalAno = 0;     // desembolsado neste ano
+  let mensal = 0;       // mensal recorrente atual (valor médio)
+  let unicasNoMes = 0;  // patrocínios "única vez" pagos neste mês
 
   const anoAtual = hoje.getFullYear();
-  const isodate = (d) => d.toISOString().slice(0, 10);
+  const mesAtual = hoje.getMonth();
+
+  // pra média mensal: data do primeiro patrocínio cadastrado
+  let primeiroInicio = null;
 
   (patrocinios || []).forEach((p) => {
     const valor = Number(p.valor || 0);
     if (!valor) return;
     const inicio = new Date(p.data_inicio + 'T00:00:00');
+    if (!primeiroInicio || inicio < primeiroInicio) primeiroInicio = inicio;
+
     const limite = p.data_fim ? new Date(p.data_fim + 'T00:00:00') : hoje;
     const efetivoFim = limite < hoje ? limite : hoje;
     if (efetivoFim < inicio) return;
@@ -112,6 +118,10 @@ export function calcularInvestimentos(patrocinios, hoje = new Date()) {
     if (p.recorrencia === 'unica') {
       total += valor;
       if (inicio.getFullYear() === anoAtual) totalAno += valor;
+      // únicas SÓ contam no mês em que aconteceram
+      if (inicio.getFullYear() === anoAtual && inicio.getMonth() === mesAtual) {
+        unicasNoMes += valor;
+      }
       return;
     }
 
@@ -138,5 +148,15 @@ export function calcularInvestimentos(patrocinios, hoje = new Date()) {
     }
   });
 
-  return { total, totalAno, mensal };
+  // média mensal real = total histórico / meses desde o primeiro patrocínio
+  let mediaMensal = 0;
+  if (primeiroInicio && total > 0) {
+    const meses = Math.max(1,
+      (hoje.getFullYear() - primeiroInicio.getFullYear()) * 12
+      + (hoje.getMonth() - primeiroInicio.getMonth()) + 1
+    );
+    mediaMensal = total / meses;
+  }
+
+  return { total, totalAno, mensal, unicasNoMes, mediaMensal };
 }

@@ -185,11 +185,11 @@ export default function BrindeFormModal({ open, brinde, onClose, onSaved }) {
         }
       >
         <div className="space-y-3">
-          {/* Buscar no XBZ — só quando criando um novo brinde */}
-          {!isEdit && (
-            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg space-y-2">
+          {/* Buscar no XBZ — disponível para novo brinde E para editar (atualiza nome/código/custo/foto, mantém estoque) */}
+          <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg space-y-2">
               <div className="flex items-center gap-2 text-xs font-semibold text-amber-900">
                 <Search size={14} /> Buscar produto no XBZ
+                {isEdit && <span className="text-[10px] font-normal text-amber-700">(atualiza nome, código, custo e foto · mantém o estoque atual)</span>}
               </div>
               <div className="flex gap-2">
                 <input
@@ -242,8 +242,7 @@ export default function BrindeFormModal({ open, brinde, onClose, onSaved }) {
                   ))}
                 </div>
               )}
-            </div>
-          )}
+          </div>
 
           {/* Foto + nome */}
           <div className="flex gap-3">

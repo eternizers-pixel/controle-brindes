@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Power, PowerOff, Trash2, Plus } from 'lucide-react';
+import { Power, PowerOff, Trash2, Plus, Search, Loader2, Package2 } from 'lucide-react';
 import Modal from './Modal';
-import { criarBrinde, atualizarBrinde, excluirBrinde } from '../api/client';
+import { criarBrinde, atualizarBrinde, excluirBrinde, buscarNoXBZ } from '../api/client';
 import EntradaModal from './EntradaModal';
 import { useToast } from './Toast';
 
@@ -17,6 +17,12 @@ export default function BrindeFormModal({ open, brinde, onClose, onSaved }) {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState('');
   const [showEntrada, setShowEntrada] = useState(false);
+
+  // Busca XBZ
+  const [xbzBusca, setXbzBusca] = useState('');
+  const [xbzBuscando, setXbzBuscando] = useState(false);
+  const [xbzResultados, setXbzResultados] = useState(null); // null = nunca buscou; [] = sem resultado
+  const [xbzErro, setXbzErro] = useState('');
 
   useEffect(() => {
     if (!open) return;
@@ -40,7 +46,46 @@ export default function BrindeFormModal({ open, brinde, onClose, onSaved }) {
     setFoto(null);
     setErr('');
     setShowEntrada(false);
+    setXbzBusca('');
+    setXbzBuscando(false);
+    setXbzResultados(null);
+    setXbzErro('');
   }, [open, brinde]);
+
+  const buscarXBZ = async () => {
+    if (!xbzBusca.trim()) return;
+    setXbzBuscando(true);
+    setXbzErro('');
+    try {
+      const produtos = await buscarNoXBZ(xbzBusca);
+      setXbzResultados(produtos);
+      if (produtos.length === 0) {
+        setXbzErro('Nenhum produto encontrado com esse código no XBZ.');
+      }
+    } catch (e) {
+      setXbzErro(e.message);
+      setXbzResultados([]);
+    } finally {
+      setXbzBuscando(false);
+    }
+  };
+
+  const usarProdutoXBZ = (p) => {
+    setForm((f) => ({
+      ...f,
+      nome: p.nome,
+      codigo: p.codigo_composto || p.codigo,
+      custo_unitario: p.preco,
+    }));
+    if (p.foto) {
+      setFoto(p.foto); // armazena URL direta da CDN do XBZ
+      setPreview(p.foto);
+    }
+    // limpa painel pra desafogar a UI
+    setXbzResultados(null);
+    setXbzBusca('');
+    toast.success(`Dados preenchidos com "${p.nome}"`);
+  };
 
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
   const onFile = (e) => {
@@ -140,6 +185,66 @@ export default function BrindeFormModal({ open, brinde, onClose, onSaved }) {
         }
       >
         <div className="space-y-3">
+          {/* Buscar no XBZ — só quando criando um novo brinde */}
+          {!isEdit && (
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg space-y-2">
+              <div className="flex items-center gap-2 text-xs font-semibold text-amber-900">
+                <Search size={14} /> Buscar produto no XBZ
+              </div>
+              <div className="flex gap-2">
+                <input
+                  className="input flex-1"
+                  placeholder="Cole o código (ex: P$101011)"
+                  value={xbzBusca}
+                  onChange={(e) => setXbzBusca(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), buscarXBZ())}
+                />
+                <button
+                  type="button"
+                  className="btn-outline border-amber-300 text-amber-800 hover:bg-amber-100 flex-shrink-0"
+                  onClick={buscarXBZ}
+                  disabled={xbzBuscando || !xbzBusca.trim()}
+                >
+                  {xbzBuscando ? <Loader2 size={14} className="animate-spin" /> : <Search size={14} />}
+                  Buscar
+                </button>
+              </div>
+
+              {xbzErro && (
+                <div className="text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded p-2">{xbzErro}</div>
+              )}
+
+              {xbzResultados && xbzResultados.length > 0 && (
+                <div className="space-y-1 max-h-56 overflow-y-auto">
+                  <div className="text-[11px] text-amber-800">
+                    {xbzResultados.length} resultado{xbzResultados.length > 1 ? 's' : ''} — clique para preencher
+                  </div>
+                  {xbzResultados.map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => usarProdutoXBZ(p)}
+                      className="w-full bg-white hover:bg-amber-100 border border-amber-200 rounded-lg p-2 flex items-center gap-2 text-left transition-colors"
+                    >
+                      {p.foto ? (
+                        <img src={p.foto} alt="" className="w-10 h-10 rounded object-cover flex-shrink-0" />
+                      ) : (
+                        <div className="w-10 h-10 rounded bg-slate-100 grid place-items-center text-slate-300 flex-shrink-0">
+                          <Package2 size={16} />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs font-semibold text-slate-800 truncate">{p.nome}</div>
+                        <div className="text-[10px] text-slate-500">{p.codigo_composto || p.codigo}</div>
+                      </div>
+                      <div className="text-xs font-bold text-emerald-700 flex-shrink-0">R$ {p.preco_formatado}</div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Foto + nome */}
           <div className="flex gap-3">
             <label className="block w-20 h-20 sm:w-24 sm:h-24 flex-shrink-0 bg-slate-100 rounded-lg overflow-hidden cursor-pointer hover:bg-slate-200 grid place-items-center text-slate-400 text-[10px] text-center">

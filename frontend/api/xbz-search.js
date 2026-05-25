@@ -47,21 +47,14 @@ export default async function handler(req, res) {
     });
 
     const rawText = await r.text();
+    // O XBZ ás vezes retorna a string JSON dentro de outra string JSON (duplo encoding).
+    // Faz parse e, se ainda for string, parseia novamente.
     let data;
-    try { data = JSON.parse(rawText); } catch { data = null; }
-
-    // DEBUG: se o XBZ devolver vazio ou erro, mostra o que veio
-    if (req.query.debug === '1') {
-      return res.status(200).json({
-        envUserSet: !!user,
-        envPasswdSet: !!passwd,
-        envUserLen: user?.length || 0,
-        envPasswdLen: passwd?.length || 0,
-        upstreamStatus: r.status,
-        upstreamRaw: rawText.slice(0, 2000),
-        upstreamParsedType: Array.isArray(data) ? 'array' : typeof data,
-        upstreamLen: Array.isArray(data) ? data.length : null,
-      });
+    try {
+      data = JSON.parse(rawText);
+      if (typeof data === 'string') data = JSON.parse(data);
+    } catch {
+      data = null;
     }
 
     if (!r.ok) {

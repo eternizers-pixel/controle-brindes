@@ -2,6 +2,21 @@
 // Camada de acesso a dados — Supabase JS client.
 import { supabase } from '../lib/supabase';
 
+/* ===================================================================
+   XBZ (busca de produtos via serverless function)
+=================================================================== */
+export async function buscarNoXBZ(busca) {
+  const term = String(busca || '').trim();
+  if (!term) return [];
+  const r = await fetch(`/api/xbz-search?busca=${encodeURIComponent(term)}`);
+  if (!r.ok) {
+    const txt = await r.text().catch(() => '');
+    throw new Error(`Falha ao buscar no XBZ (${r.status}). ${txt}`);
+  }
+  const data = await r.json();
+  return data.produtos || [];
+}
+
 /* ---------- helpers ---------- */
 // Sempre await a query (builder ou Promise) e devolve apenas data,
 // lançando Error se houver erro.

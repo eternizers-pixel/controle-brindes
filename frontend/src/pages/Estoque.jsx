@@ -1,8 +1,9 @@
 // Tela "Entregar Brinde" — fluxo simples para dar baixa em brindes
-import { useEffect, useState } from 'react';
-import { Search, Send, Package2 } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { Search, Send, Package2, X } from 'lucide-react';
 import { getBrindes } from '../api/client';
-import { formatInt } from '../utils/helpers';
+import { formatInt, FAIXAS_CUSTO, getFaixaCusto, getFaixaByKey } from '../utils/helpers';
 import SaidaModal from '../components/SaidaModal';
 
 export default function Estoque() {
@@ -10,6 +11,10 @@ export default function Estoque() {
   const [busca, setBusca] = useState('');
   const [loading, setLoading] = useState(true);
   const [saidaFor, setSaidaFor] = useState(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const faixaKey = searchParams.get('faixa') || '';
+  const faixaSelecionada = faixaKey ? getFaixaByKey(faixaKey) : null;
 
   const load = async () => {
     setLoading(true);
@@ -21,6 +26,19 @@ export default function Estoque() {
   useEffect(() => { load(); }, []);
   useEffect(() => { const t = setTimeout(load, 250); return () => clearTimeout(t); }, [busca]);
 
+  const brindesFiltrados = useMemo(() => {
+    if (!faixaSelecionada) return brindes;
+    return brindes.filter((b) => {
+      const c = Number(b.custo_unitario || 0);
+      return c >= faixaSelecionada.min && c < faixaSelecionada.max;
+    });
+  }, [brindes, faixaSelecionada]);
+
+  const setFaixa = (key) => {
+    if (!key) searchParams.delete('faixa'); else searchParams.set('faixa', key);
+    setSearchParams(searchParams);
+  };
+
   return (
     <div className="space-y-4 max-w-6xl mx-auto">
       <header className="text-center">
@@ -31,29 +49,56 @@ export default function Estoque() {
         <p className="text-slate-500 text-sm">Toque em um brinde para dar baixa no estoque</p>
       </header>
 
-      <div className="card p-3">
-        <div className="relative">
-          <Search className="absolute left-3 top-2.5 text-slate-400" size={16} />
-          <input
-            className="input pl-9"
-            placeholder="Pesquisar por nome ou código…"
-            value={busca}
-            onChange={(e) => setBusca(e.target.value)}
-            autoFocus
-          />
+      <div className="card p-3 space-y-2">
+        <div className="flex gap-2 flex-col sm:flex-row">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-2.5 text-slate-400" size={16} />
+            <input
+              className="input pl-9"
+              placeholder="Pesquisar por nome ou código…"
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+              autoFocus
+            />
+          </div>
+          <select
+            className="input sm:w-56"
+            value={faixaKey}
+            onChange={(e) => setFaixa(e.target.value)}
+          >
+            <option value="">Todas as faixas de custo</option>
+            {FAIXAS_CUSTO.map((f) => (
+              <option key={f.key} value={f.key}>{f.label}</option>
+            ))}
+          </select>
         </div>
+        {faixaSelecionada && (
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-slate-600">
+              Filtrando por: <span className={`badge ${faixaSelecionada.badge}`}>{faixaSelecionada.label}</span>
+            </span>
+            <button
+              type="button"
+              onClick={() => setFaixa('')}
+              className="text-slate-500 hover:text-slate-800 flex items-center gap-1"
+            >
+              <X size={12} /> Limpar filtro
+            </button>
+          </div>
+        )}
       </div>
 
       {loading ? (
         <div className="text-slate-500">Carregando…</div>
-      ) : brindes.length === 0 ? (
+      ) : brindesFiltrados.length === 0 ? (
         <div className="card p-10 text-center text-slate-500">
-          {busca ? 'Nenhum brinde encontrado.' : 'Nenhum brinde cadastrado ainda.'}
+          {busca || faixaSelecionada ? 'Nenhum brinde encontrado com esses filtros.' : 'Nenhum brinde cadastrado ainda.'}
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
-          {brindes.map((b) => {
+          {brindesFiltrados.map((b) => {
             const sem = b.quantidade_estoque <= 0;
+            const faixa = getFaixaCusto(b.custo_unitario);
             return (
               <button
                 key={b.id}
@@ -65,12 +110,17 @@ export default function Estoque() {
                 }`}
               >
                 {/* Foto grande - destaque principal */}
-                <div className="aspect-square bg-slate-100">
+                <div className="relative aspect-square bg-slate-100">
                   {b.foto ? (
                     <img src={b.foto} alt="" className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full grid place-items-center text-slate-300">
                       <Package2 size={56} />
+                    </div>
+                  )}
+                  {faixa && (
+                    <div className="absolute top-2 right-2">
+                      <span className={`badge ${faixa.badge} shadow-sm`}>{faixa.label}</span>
                     </div>
                   )}
                 </div>

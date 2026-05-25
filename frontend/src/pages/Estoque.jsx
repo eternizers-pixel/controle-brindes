@@ -65,10 +65,10 @@ export default function Estoque() {
                 }`}
               >
                 {b.foto ? (
-                  <img src={b.foto} alt="" className="w-14 h-14 rounded-lg object-cover flex-shrink-0" />
+                  <img src={b.foto} alt="" className="w-20 h-20 sm:w-24 sm:h-24 rounded-lg object-cover flex-shrink-0" />
                 ) : (
-                  <div className="w-14 h-14 rounded-lg bg-slate-100 grid place-items-center text-slate-300 flex-shrink-0">
-                    <Package2 size={22} />
+                  <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-lg bg-slate-100 grid place-items-center text-slate-300 flex-shrink-0">
+                    <Package2 size={32} />
                   </div>
                 )}
                 <div className="flex-1 min-w-0">

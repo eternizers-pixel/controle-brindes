@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   Package, Boxes, DollarSign, TrendingUp, AlertTriangle, Calendar, Tag,
-  HandCoins, Repeat, PiggyBank, Wallet,
+  HandCoins, Repeat, Wallet, LineChart,
 } from 'lucide-react';
 import { Bar, Doughnut } from 'react-chartjs-2';
 import {
@@ -45,7 +45,8 @@ export default function Dashboard() {
     .slice(0, 5);
   const formaPagamentoGrupos = agruparPorFormaPagamento(patrocinios);
 
-  const totalSocialMes = Number(totais.custo_entregues_mes || 0) + invest.mensal;
+  const totalSocialMes =
+    Number(totais.custo_entregues_mes || 0) + invest.mensal + invest.unicasNoMes;
 
   const barData = {
     labels: mais_entregues.map((b) => b.nome),
@@ -103,7 +104,7 @@ export default function Dashboard() {
           <StatCard icon={HandCoins}  label="Patrocínios ativos"     value={formatInt(patrocinios.length)}    accent="violet" />
           <StatCard icon={Repeat}     label="Mensal recorrente"      value={formatBRL(invest.mensal)}        accent="brand" />
           <StatCard icon={Calendar}   label="Investido no ano"       value={formatBRL(invest.totalAno)}      accent="green" />
-          <StatCard icon={PiggyBank}  label="Investido histórico"    value={formatBRL(invest.total)}         accent="amber" />
+          <StatCard icon={LineChart}  label="Média mensal"           value={formatBRL(invest.mediaMensal)}   accent="amber" />
         </div>
       </div>
 
@@ -112,7 +113,11 @@ export default function Dashboard() {
         <div className="text-xs font-semibold uppercase text-slate-600 mb-1">Investimento social neste mês</div>
         <div className="text-3xl font-bold text-brand-700">{formatBRL(totalSocialMes)}</div>
         <div className="text-xs text-slate-600 mt-1">
-          {formatBRL(totais.custo_entregues_mes || 0)} em brindes entregues + {formatBRL(invest.mensal)} em patrocínios mensais
+          {formatBRL(totais.custo_entregues_mes || 0)} em brindes entregues
+          {' '}+ {formatBRL(invest.mensal)} em patrocínios mensais
+          {invest.unicasNoMes > 0 && (
+            <> {' '}+ {formatBRL(invest.unicasNoMes)} em patrocínios únicos do mês</>
+          )}
         </div>
       </div>
 

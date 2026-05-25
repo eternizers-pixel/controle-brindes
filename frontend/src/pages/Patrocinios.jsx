@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, Search, HandCoins, Calendar, Repeat } from 'lucide-react';
+import { Plus, Search, HandCoins, Calendar, LineChart } from 'lucide-react';
 import { getPatrocinios } from '../api/client';
 import { formatBRL, formatDate, labelRecorrencia, valorMensalPatrocinio, calcularInvestimentos, labelFormaPagamento, badgeFormaPagamento } from '../utils/helpers';
 import PatrocinioFormModal from '../components/PatrocinioFormModal';
@@ -59,12 +59,12 @@ export default function Patrocinios() {
           </div>
         </div>
         <div className="card p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-brand-100 text-brand-600 grid place-items-center">
-            <Repeat size={20} />
+          <div className="w-10 h-10 rounded-lg bg-amber-100 text-amber-600 grid place-items-center">
+            <LineChart size={20} />
           </div>
           <div>
-            <div className="text-xs text-slate-500 uppercase">Investido histórico</div>
-            <div className="text-lg font-bold text-slate-800">{formatBRL(totais.total)}</div>
+            <div className="text-xs text-slate-500 uppercase">Média mensal</div>
+            <div className="text-lg font-bold text-slate-800">{formatBRL(totais.mediaMensal)}</div>
           </div>
         </div>
       </div>

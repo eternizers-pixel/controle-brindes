@@ -1,6 +1,7 @@
 // src/api/client.js
 // Camada de acesso a dados — Supabase JS client.
 import { supabase } from '../lib/supabase';
+import { FAIXAS_CUSTO } from '../utils/helpers';
 
 /* ===================================================================
    XBZ (busca de produtos via serverless function)
@@ -280,22 +281,16 @@ export async function getDashboard() {
     .sort((a, b) => a.quantidade_estoque - b.quantidade_estoque)
     .slice(0, 10);
 
-  // faixas de custo
-  const FAIXAS = [
-    { label: 'Até R$ 10',           min: 0,   max: 10 },
-    { label: 'R$ 10 — R$ 20',       min: 10,  max: 20 },
-    { label: 'R$ 20 — R$ 40',       min: 20,  max: 40 },
-    { label: 'R$ 40 — R$ 60',       min: 40,  max: 60 },
-    { label: 'R$ 60 — R$ 100',      min: 60,  max: 100 },
-    { label: 'Acima de R$ 100',     min: 100, max: Infinity },
-  ];
-  const faixas_custo = FAIXAS.map((f) => {
+  // faixas de custo (definidas em utils/helpers.js)
+  const faixas_custo = FAIXAS_CUSTO.map((f) => {
     const inFaixa = lista.filter((b) => {
       const c = Number(b.custo_unitario || 0);
       return c >= f.min && c < f.max;
     });
     return {
+      key: f.key,
       label: f.label,
+      badge: f.badge,
       count: inFaixa.length,
       unidades: inFaixa.reduce((s, b) => s + (b.quantidade_estoque || 0), 0),
       valor_total: inFaixa.reduce((s, b) => s + (b.quantidade_estoque || 0) * Number(b.custo_unitario || 0), 0),

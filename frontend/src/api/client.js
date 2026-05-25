@@ -291,6 +291,7 @@ export async function getDashboard() {
       key: f.key,
       label: f.label,
       badge: f.badge,
+      barColor: f.barColor,
       count: inFaixa.length,
       unidades: inFaixa.reduce((s, b) => s + (b.quantidade_estoque || 0), 0),
       valor_total: inFaixa.reduce((s, b) => s + (b.quantidade_estoque || 0) * Number(b.custo_unitario || 0), 0),

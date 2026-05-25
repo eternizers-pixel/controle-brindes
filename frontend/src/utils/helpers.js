@@ -52,12 +52,44 @@ export const RECORRENCIAS = [
 export const labelRecorrencia = (v) =>
   RECORRENCIAS.find((r) => r.value === v)?.label || v || '—';
 
+// Formas de pagamento do patrocínio
+export const FORMAS_PAGAMENTO = [
+  { value: 'dinheiro',        label: 'Dinheiro',         badge: 'bg-emerald-100 text-emerald-700' },
+  { value: 'cheque_presente', label: 'Cheque presente',  badge: 'bg-amber-100 text-amber-700' },
+  { value: 'produtos_loja',   label: 'Produtos da loja', badge: 'bg-sky-100 text-sky-700' },
+  { value: 'outros',          label: 'Outros',           badge: 'bg-slate-100 text-slate-600' },
+];
+
+export const labelFormaPagamento = (v) =>
+  FORMAS_PAGAMENTO.find((f) => f.value === v)?.label || (v ? v : '—');
+
+export const badgeFormaPagamento = (v) =>
+  FORMAS_PAGAMENTO.find((f) => f.value === v)?.badge || 'bg-slate-100 text-slate-600';
+
 // Valor mensal equivalente (quanto custa por mês em média)
 export function valorMensalPatrocinio(p) {
   if (!p || !p.recorrencia || p.recorrencia === 'unica') return 0;
   const r = RECORRENCIAS.find((x) => x.value === p.recorrencia);
   if (!r || !r.intervaloMeses) return 0;
   return Number(p.valor || 0) / r.intervaloMeses;
+}
+
+// Agrupa patrocínios por forma de pagamento (count + soma do valor mensal e do valor total cadastrado)
+export function agruparPorFormaPagamento(patrocinios = []) {
+  const out = {};
+  FORMAS_PAGAMENTO.forEach((f) => {
+    out[f.value] = { value: f.value, label: f.label, count: 0, valor: 0, mensal: 0 };
+  });
+  out['__sem'] = { value: '__sem', label: 'Não informado', count: 0, valor: 0, mensal: 0 };
+
+  (patrocinios || []).forEach((p) => {
+    const key = p.forma_pagamento && out[p.forma_pagamento] ? p.forma_pagamento : '__sem';
+    out[key].count += 1;
+    out[key].valor += Number(p.valor || 0);
+    out[key].mensal += valorMensalPatrocinio(p);
+  });
+
+  return Object.values(out).filter((g) => g.count > 0);
 }
 
 // Calcula totais (já investido total, ano vigente, mensal recorrente)

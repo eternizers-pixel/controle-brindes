@@ -25,6 +25,25 @@ export const TIPOS_SOLICITANTE = [
 export const labelTipo = (v) =>
   TIPOS_SOLICITANTE.find((t) => t.value === v)?.label || (v || '—');
 
+// Faixas de custo dos brindes (usadas no Dashboard e filtros)
+export const FAIXAS_CUSTO = [
+  { key: 'ate10',    label: 'Até R$ 10',         min: 0,   max: 10,       badge: 'bg-emerald-100 text-emerald-700' },
+  { key: '10a20',    label: 'R$ 10 — R$ 20',     min: 10,  max: 20,       badge: 'bg-teal-100 text-teal-700' },
+  { key: '20a40',    label: 'R$ 20 — R$ 40',     min: 20,  max: 40,       badge: 'bg-sky-100 text-sky-700' },
+  { key: '40a60',    label: 'R$ 40 — R$ 60',     min: 40,  max: 60,       badge: 'bg-violet-100 text-violet-700' },
+  { key: '60a100',   label: 'R$ 60 — R$ 100',    min: 60,  max: 100,      badge: 'bg-amber-100 text-amber-700' },
+  { key: 'acima100', label: 'Acima de R$ 100',   min: 100, max: Infinity, badge: 'bg-rose-100 text-rose-700' },
+];
+
+export function getFaixaCusto(custo) {
+  const c = Number(custo || 0);
+  return FAIXAS_CUSTO.find((f) => c >= f.min && c < f.max);
+}
+
+export function getFaixaByKey(key) {
+  return FAIXAS_CUSTO.find((f) => f.key === key);
+}
+
 export const nivelClass = (nivel) => {
   switch (nivel) {
     case 'critico':  return 'badge-red';

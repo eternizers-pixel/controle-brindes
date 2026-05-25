@@ -1,6 +1,6 @@
-// Tela "Realizar Doação" — fluxo simples para dar baixa em brindes
+// Tela "Entregar Brinde" — fluxo simples para dar baixa em brindes
 import { useEffect, useState } from 'react';
-import { Search, HandHeart, Package2 } from 'lucide-react';
+import { Search, Send, Package2 } from 'lucide-react';
 import { getBrindes } from '../api/client';
 import { formatInt, nivelClass, nivelLabel } from '../utils/helpers';
 import SaidaModal from '../components/SaidaModal';
@@ -25,9 +25,9 @@ export default function Estoque() {
     <div className="space-y-4 max-w-3xl mx-auto">
       <header className="text-center">
         <div className="inline-flex w-12 h-12 rounded-full bg-rose-500 text-white items-center justify-center mb-2">
-          <HandHeart size={22} />
+          <Send size={22} />
         </div>
-        <h1 className="text-xl sm:text-2xl font-bold text-slate-800">Realizar Doação</h1>
+        <h1 className="text-xl sm:text-2xl font-bold text-slate-800">Entregar Brinde</h1>
         <p className="text-slate-500 text-sm">Toque em um brinde para dar baixa no estoque</p>
       </header>
 

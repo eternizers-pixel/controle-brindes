@@ -1,11 +1,11 @@
 import { Link } from 'react-router-dom';
-import { HandHeart, Package, BarChart3, History, FileText, Gift, HandCoins } from 'lucide-react';
+import { Send, Package, BarChart3, History, FileText, Gift, HandCoins } from 'lucide-react';
 
 const cards = [
   {
-    to: '/doacao',
-    icon: HandHeart,
-    title: 'Realizar Doação',
+    to: '/entregar',
+    icon: Send,
+    title: 'Entregar Brinde',
     desc: 'Dar baixa em brindes entregues',
     cardBg: 'bg-rose-50 hover:bg-rose-100 border-rose-100',
     iconBg: 'bg-rose-500',

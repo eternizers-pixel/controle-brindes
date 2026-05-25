@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   Package, Boxes, DollarSign, TrendingUp, AlertTriangle, Calendar, Tag,
-  HandCoins, Repeat, PiggyBank,
+  HandCoins, Repeat, PiggyBank, Wallet,
 } from 'lucide-react';
 import { Bar, Doughnut } from 'react-chartjs-2';
 import {
@@ -13,6 +13,7 @@ import StatCard from '../components/StatCard';
 import {
   formatBRL, formatInt, formatDate, labelTipo,
   labelRecorrencia, calcularInvestimentos,
+  labelFormaPagamento, badgeFormaPagamento, agruparPorFormaPagamento,
 } from '../utils/helpers';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Legend, Title);
@@ -42,6 +43,7 @@ export default function Dashboard() {
   const topPatrocinados = [...patrocinios]
     .sort((a, b) => Number(b.valor) - Number(a.valor))
     .slice(0, 5);
+  const formaPagamentoGrupos = agruparPorFormaPagamento(patrocinios);
 
   const totalSocialMes = Number(totais.custo_entregues_mes || 0) + invest.mensal;
 
@@ -60,6 +62,16 @@ export default function Dashboard() {
     datasets: [{
       data: saidas_por_tipo.map((s) => s.total),
       backgroundColor: PALETA,
+      borderWidth: 0,
+    }],
+  };
+
+  // Gráfico de patrocínios por forma de pagamento (valor cadastrado)
+  const formaPagamentoData = {
+    labels: formaPagamentoGrupos.map((g) => g.label),
+    datasets: [{
+      data: formaPagamentoGrupos.map((g) => g.valor),
+      backgroundColor: ['#10b981', '#f59e0b', '#0ea5e9', '#64748b', '#94a3b8'],
       borderWidth: 0,
     }],
   };
@@ -104,23 +116,64 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Top patrocinados */}
-      {topPatrocinados.length > 0 && (
-        <div className="card p-5">
-          <h3 className="font-semibold text-slate-800 mb-3 flex items-center gap-2">
-            <HandCoins size={18} className="text-violet-500" /> Top patrocinados
-          </h3>
-          <ul className="divide-y divide-slate-100">
-            {topPatrocinados.map((p) => (
-              <li key={p.id} className="py-2 flex items-center justify-between gap-2">
-                <div className="min-w-0">
-                  <div className="text-sm font-medium text-slate-800 truncate">{p.nome}</div>
-                  <div className="text-xs text-slate-500">{labelRecorrencia(p.recorrencia)}{p.categoria ? ` · ${p.categoria}` : ''}</div>
+      {/* Top patrocinados + Forma de pagamento */}
+      {(topPatrocinados.length > 0 || formaPagamentoGrupos.length > 0) && (
+        <div className="grid gap-6 lg:grid-cols-2">
+          {topPatrocinados.length > 0 && (
+            <div className="card p-5">
+              <h3 className="font-semibold text-slate-800 mb-3 flex items-center gap-2">
+                <HandCoins size={18} className="text-violet-500" /> Top patrocinados
+              </h3>
+              <ul className="divide-y divide-slate-100">
+                {topPatrocinados.map((p) => (
+                  <li key={p.id} className="py-2 flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium text-slate-800 truncate">{p.nome}</div>
+                      <div className="text-xs text-slate-500 flex flex-wrap items-center gap-1.5 mt-0.5">
+                        <span>{labelRecorrencia(p.recorrencia)}</span>
+                        {p.forma_pagamento && (
+                          <span className={`badge ${badgeFormaPagamento(p.forma_pagamento)}`}>
+                            {labelFormaPagamento(p.forma_pagamento)}
+                          </span>
+                        )}
+                        {p.categoria && <span>· {p.categoria}</span>}
+                      </div>
+                    </div>
+                    <div className="text-sm font-semibold text-slate-700 flex-shrink-0">{formatBRL(p.valor)}</div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {formaPagamentoGrupos.length > 0 && (
+            <div className="card p-5">
+              <h3 className="font-semibold text-slate-800 mb-3 flex items-center gap-2">
+                <Wallet size={18} className="text-emerald-500" /> Patrocínios por forma de pagamento
+              </h3>
+              <div className="grid gap-4 sm:grid-cols-2 items-center">
+                <div style={{ height: 200 }}>
+                  <Doughnut data={formaPagamentoData} options={{
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                  }} />
                 </div>
-                <div className="text-sm font-semibold text-slate-700 flex-shrink-0">{formatBRL(p.valor)}</div>
-              </li>
-            ))}
-          </ul>
+                <ul className="divide-y divide-slate-100 text-sm">
+                  {formaPagamentoGrupos.map((g) => (
+                    <li key={g.value} className="py-1.5 flex items-center justify-between gap-2">
+                      <span className={`badge ${g.value === '__sem' ? 'bg-slate-100 text-slate-500' : badgeFormaPagamento(g.value)}`}>
+                        {g.label}
+                      </span>
+                      <span className="text-right">
+                        <span className="font-semibold text-slate-800">{formatBRL(g.valor)}</span>
+                        <span className="block text-[11px] text-slate-500">{g.count} {g.count === 1 ? 'patrocínio' : 'patrocínios'}</span>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -233,8 +286,25 @@ export default function Dashboard() {
         {top_destinatarios.length === 0 ? (
           <div className="text-slate-400 text-sm">Sem dados ainda.</div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm min-w-[400px]">
+          <>
+            {/* Cards no mobile */}
+            <ul className="sm:hidden divide-y divide-slate-100">
+              {top_destinatarios.map((d, i) => (
+                <li key={i} className="py-2.5 flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-medium text-slate-800 break-words">{d.nome}</div>
+                    <div className="text-xs text-slate-500 mt-0.5">{labelTipo(d.tipo)}</div>
+                  </div>
+                  <div className="flex-shrink-0 text-right">
+                    <div className="text-sm font-bold text-slate-800">{formatInt(d.total)}</div>
+                    <div className="text-[10px] text-slate-400 uppercase">unidades</div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+
+            {/* Tabela no desktop */}
+            <table className="hidden sm:table w-full text-sm">
               <thead className="text-slate-500 text-xs uppercase border-b border-slate-100">
                 <tr><th className="text-left py-2">Destinatário</th><th className="text-left">Tipo</th><th className="text-right">Unidades</th></tr>
               </thead>
@@ -248,7 +318,7 @@ export default function Dashboard() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </>
         )}
       </div>
     </div>

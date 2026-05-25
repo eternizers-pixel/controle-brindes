@@ -1,19 +1,25 @@
 import { useState } from 'react';
 import { FileText, FileSpreadsheet, Download } from 'lucide-react';
 import {
-  relEstoque, relSaidas, relPorDestinatario, relCustoEntregas,
+  relEstoque, relSaidas, relPorDestinatario, relCustoEntregas, relPatrocinios,
 } from '../api/client';
 import { exportarPDF, exportarExcel } from '../utils/export';
-import { formatBRL, formatInt, formatDate, labelTipo, TIPOS_SOLICITANTE } from '../utils/helpers';
+import {
+  formatBRL, formatInt, formatDate, labelTipo, TIPOS_SOLICITANTE,
+  FORMAS_PAGAMENTO, labelFormaPagamento, labelRecorrencia,
+  agruparPorFormaPagamento, valorMensalPatrocinio,
+} from '../utils/helpers';
 
 export default function Relatorios() {
   const [periodo, setPeriodo] = useState({ inicio: '', fim: '' });
   const [tipo, setTipo] = useState('');
+  const [formaPag, setFormaPag] = useState('');
 
   const [estoque, setEstoque] = useState([]);
   const [saidas,  setSaidas]  = useState(null);
   const [porDest, setPorDest] = useState([]);
   const [custos,  setCustos]  = useState(null);
+  const [patroc,  setPatroc]  = useState(null);
 
   const params = () => {
     const p = {};
@@ -106,6 +112,50 @@ export default function Relatorios() {
     });
   };
 
+  // --- Patrocínios ---
+  const carregarPatroc = async () => {
+    const rows = await relPatrocinios({
+      ...(formaPag ? { forma_pagamento: formaPag } : {}),
+      ...(periodo.inicio ? { inicio: periodo.inicio } : {}),
+      ...(periodo.fim ? { fim: periodo.fim } : {}),
+    });
+    const ativos = rows.filter((r) => r.ativo);
+    const grupos = agruparPorFormaPagamento(rows);
+    const totalGeral = rows.reduce((s, r) => s + Number(r.valor || 0), 0);
+    const mensalGeral = ativos.reduce((s, r) => s + valorMensalPatrocinio(r), 0);
+    setPatroc({ rows, grupos, totalGeral, mensalGeral });
+  };
+  const exportarPatrocPDF = () => {
+    exportarPDF({
+      titulo: 'Relatório de Patrocínios',
+      subtitulo: `Período: ${periodo.inicio || '—'} a ${periodo.fim || '—'}  ·  Forma: ${formaPag ? labelFormaPagamento(formaPag) : 'todas'}  ·  Total: ${formatBRL(patroc.totalGeral)}  ·  Mensal: ${formatBRL(patroc.mensalGeral)}`,
+      colunas: ['Patrocinado', 'Valor', 'Recorrência', 'Forma de pagamento', 'Categoria', 'Início', 'Fim', 'Ativo'],
+      linhas: patroc.rows.map((r) => [
+        r.nome, formatBRL(r.valor), labelRecorrencia(r.recorrencia),
+        labelFormaPagamento(r.forma_pagamento), r.categoria || '—',
+        formatDate(r.data_inicio), r.data_fim ? formatDate(r.data_fim) : '—',
+        r.ativo ? 'Sim' : 'Não',
+      ]),
+    });
+  };
+  const exportarPatrocXLS = () => {
+    exportarExcel({
+      titulo: 'Relatório de Patrocínios',
+      sheetName: 'Patrocínios',
+      dados: patroc.rows.map((r) => ({
+        Patrocinado: r.nome,
+        Valor: Number(r.valor),
+        Recorrência: labelRecorrencia(r.recorrencia),
+        'Forma de pagamento': labelFormaPagamento(r.forma_pagamento),
+        Categoria: r.categoria || '',
+        'Data de início': r.data_inicio,
+        'Data fim': r.data_fim || '',
+        Ativo: r.ativo ? 'Sim' : 'Não',
+        Observação: r.observacao || '',
+      })),
+    });
+  };
+
   return (
     <div className="space-y-6">
       <header>
@@ -113,7 +163,7 @@ export default function Relatorios() {
         <p className="text-slate-500 text-sm">Filtre, visualize e exporte em PDF ou Excel</p>
       </header>
 
-      <div className="card p-4 grid gap-3 md:grid-cols-4">
+      <div className="card p-4 grid gap-3 sm:grid-cols-2 md:grid-cols-4">
         <div>
           <label className="label">Início</label>
           <input className="input" type="date" value={periodo.inicio} onChange={(e) => setPeriodo({ ...periodo, inicio: e.target.value })} />
@@ -127,6 +177,13 @@ export default function Relatorios() {
           <select className="input" value={tipo} onChange={(e) => setTipo(e.target.value)}>
             <option value="">Todos</option>
             {TIPOS_SOLICITANTE.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="label">Forma de pagamento (patrocínio)</label>
+          <select className="input" value={formaPag} onChange={(e) => setFormaPag(e.target.value)}>
+            <option value="">Todas</option>
+            {FORMAS_PAGAMENTO.map((f) => <option key={f.value} value={f.value}>{f.label}</option>)}
           </select>
         </div>
       </div>
@@ -217,6 +274,84 @@ export default function Relatorios() {
               </tbody>
             </table>
           </div>
+        )}
+      </RelatorioCard>
+
+      {/* Patrocínios */}
+      <RelatorioCard
+        titulo="Patrocínios"
+        descricao="Lista de patrocínios com forma de pagamento, recorrência e valores."
+        onLoad={carregarPatroc}
+        onPdf={patroc?.rows.length ? exportarPatrocPDF : null}
+        onXls={patroc?.rows.length ? exportarPatrocXLS : null}
+      >
+        {patroc && (
+          <>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+              <div className="bg-slate-50 rounded-lg p-3">
+                <div className="text-xs text-slate-500">Patrocínios</div>
+                <div className="text-xl font-bold">{formatInt(patroc.rows.length)}</div>
+              </div>
+              <div className="bg-violet-50 rounded-lg p-3">
+                <div className="text-xs text-violet-700">Total cadastrado</div>
+                <div className="text-xl font-bold text-violet-700">{formatBRL(patroc.totalGeral)}</div>
+              </div>
+              <div className="bg-emerald-50 rounded-lg p-3 col-span-2 md:col-span-1">
+                <div className="text-xs text-emerald-700">Mensal recorrente</div>
+                <div className="text-xl font-bold text-emerald-700">{formatBRL(patroc.mensalGeral)}</div>
+              </div>
+              <div className="bg-amber-50 rounded-lg p-3 col-span-2 md:col-span-1">
+                <div className="text-xs text-amber-700">Formas em uso</div>
+                <div className="text-xl font-bold text-amber-700">{patroc.grupos.length}</div>
+              </div>
+            </div>
+
+            {patroc.grupos.length > 0 && (
+              <div className="mb-4">
+                <div className="text-xs uppercase font-semibold text-slate-500 mb-2">Distribuição por forma de pagamento</div>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {patroc.grupos.map((g) => (
+                    <div key={g.value} className="flex items-center justify-between bg-slate-50 rounded-lg px-3 py-2 text-sm">
+                      <span className="font-medium text-slate-700">{g.label}</span>
+                      <span className="text-right">
+                        <span className="font-semibold text-slate-800">{formatBRL(g.valor)}</span>
+                        <span className="block text-[11px] text-slate-500">{g.count} {g.count === 1 ? 'patrocínio' : 'patrocínios'}</span>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {patroc.rows.length === 0 ? (
+              <div className="text-slate-400 text-sm">Nenhum patrocínio no filtro selecionado.</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm min-w-[600px]">
+                  <thead className="text-slate-500 text-xs uppercase border-b border-slate-100">
+                    <tr>
+                      <th className="text-left py-2">Patrocinado</th>
+                      <th className="text-left">Recorrência</th>
+                      <th className="text-left">Forma de pagamento</th>
+                      <th className="text-left">Início</th>
+                      <th className="text-right">Valor</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {patroc.rows.map((r) => (
+                      <tr key={r.id} className={`border-b border-slate-50 ${!r.ativo ? 'opacity-50' : ''}`}>
+                        <td className="py-2 font-medium">{r.nome}</td>
+                        <td className="text-slate-600">{labelRecorrencia(r.recorrencia)}</td>
+                        <td className="text-slate-600">{labelFormaPagamento(r.forma_pagamento)}</td>
+                        <td className="text-slate-600">{formatDate(r.data_inicio)}</td>
+                        <td className="text-right font-semibold">{formatBRL(r.valor)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
         )}
       </RelatorioCard>
 

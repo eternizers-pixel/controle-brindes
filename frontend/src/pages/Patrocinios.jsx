@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Plus, Search, HandCoins, Calendar, Repeat } from 'lucide-react';
 import { getPatrocinios } from '../api/client';
-import { formatBRL, formatDate, labelRecorrencia, valorMensalPatrocinio, calcularInvestimentos } from '../utils/helpers';
+import { formatBRL, formatDate, labelRecorrencia, valorMensalPatrocinio, calcularInvestimentos, labelFormaPagamento, badgeFormaPagamento } from '../utils/helpers';
 import PatrocinioFormModal from '../components/PatrocinioFormModal';
 
 export default function Patrocinios() {
@@ -109,6 +109,11 @@ export default function Patrocinios() {
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-semibold text-slate-800 truncate">{p.nome}</span>
                     <span className="badge bg-violet-100 text-violet-700">{labelRecorrencia(p.recorrencia)}</span>
+                    {p.forma_pagamento && (
+                      <span className={`badge ${badgeFormaPagamento(p.forma_pagamento)}`}>
+                        {labelFormaPagamento(p.forma_pagamento)}
+                      </span>
+                    )}
                     {p.categoria && <span className="badge bg-sky-100 text-sky-700">{p.categoria}</span>}
                     {!p.ativo && <span className="badge bg-slate-200 text-slate-600">inativo</span>}
                   </div>

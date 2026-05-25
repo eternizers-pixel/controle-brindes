@@ -183,45 +183,70 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Faixas de custo dos brindes (clicáveis = filtra Entregar Brinde) */}
-      <div className="card p-5">
-        <h3 className="font-semibold text-slate-800 mb-1 flex items-center gap-2">
-          <Tag size={18} className="text-brand-500" /> Brindes por faixa de custo
-        </h3>
-        <p className="text-xs text-slate-500 mb-4">Clique numa faixa para filtrar em <strong>Entregar Brinde</strong></p>
-        {faixas_custo.every((f) => f.count === 0) ? (
-          <div className="text-slate-400 text-sm">Nenhum brinde cadastrado ainda.</div>
-        ) : (
-          <div className="space-y-2">
-            {faixas_custo.map((f) => {
-              const disabled = f.count === 0;
-              const content = (
-                <div className={`flex items-start gap-3 p-2 rounded-lg transition-colors ${
-                  disabled ? 'opacity-40' : 'hover:bg-slate-50 cursor-pointer'
-                }`}>
-                  <div className="w-28 sm:w-32 flex-shrink-0">
-                    <div className="text-xs sm:text-sm font-medium text-slate-700">{f.label}</div>
-                    {f.count > 0 && (
-                      <div className="text-[11px] text-slate-500 mt-0.5">
-                        {formatInt(f.unidades)} un · {formatBRL(f.valor_total)}
-                      </div>
-                    )}
+      {/* Faixas de custo + Alertas de estoque baixo (ambos sobre estoque) */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        <div className="card p-5">
+          <h3 className="font-semibold text-slate-800 mb-1 flex items-center gap-2">
+            <Tag size={18} className="text-brand-500" /> Brindes por faixa de custo
+          </h3>
+          <p className="text-xs text-slate-500 mb-4">Clique numa faixa para filtrar em <strong>Entregar Brinde</strong></p>
+          {faixas_custo.every((f) => f.count === 0) ? (
+            <div className="text-slate-400 text-sm">Nenhum brinde cadastrado ainda.</div>
+          ) : (
+            <div className="space-y-2">
+              {faixas_custo.map((f) => {
+                const disabled = f.count === 0;
+                const content = (
+                  <div className={`flex items-center gap-3 p-2 rounded-lg transition-colors ${
+                    disabled ? 'opacity-40' : 'hover:bg-slate-50 cursor-pointer'
+                  }`}>
+                    <div className="w-24 sm:w-28 flex-shrink-0">
+                      <div className="text-xs sm:text-sm font-medium text-slate-700 truncate">{f.label}</div>
+                      {f.count > 0 && (
+                        <div className="text-[10px] text-slate-500 mt-0.5 truncate">
+                          {formatInt(f.unidades)} un · {formatBRL(f.valor_total)}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 bg-slate-100 rounded-full h-2.5 overflow-hidden min-w-0">
+                      <div
+                        className={`${f.barColor || 'bg-brand-500'} h-full rounded-full transition-all`}
+                        style={{ width: `${(f.count / maxFaixaCount) * 100}%`, minWidth: f.count > 0 ? '6px' : '0' }}
+                      />
+                    </div>
+                    <span className="w-7 text-right text-sm font-bold text-slate-800">{f.count}</span>
                   </div>
-                  <div className="flex-1 mt-1.5 bg-slate-100 rounded-full h-2.5 overflow-hidden">
-                    <div
-                      className="bg-brand-500 h-full rounded-full transition-all"
-                      style={{ width: `${(f.count / maxFaixaCount) * 100}%`, minWidth: f.count > 0 ? '6px' : '0' }}
-                    />
-                  </div>
-                  <span className="w-8 text-right text-sm font-semibold text-slate-700 mt-0.5">{f.count}</span>
-                </div>
-              );
-              return disabled
-                ? <div key={f.key}>{content}</div>
-                : <Link key={f.key} to={`/entregar?faixa=${f.key}`} className="block">{content}</Link>;
-            })}
+                );
+                return disabled
+                  ? <div key={f.key}>{content}</div>
+                  : <Link key={f.key} to={`/entregar?faixa=${f.key}`} className="block">{content}</Link>;
+              })}
+            </div>
+          )}
+        </div>
+
+        <div className="card p-5">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold text-slate-800 flex items-center gap-2">
+              <AlertTriangle className="text-amber-500" size={18} /> Alertas de estoque baixo
+            </h3>
+            <span className="badge bg-amber-100 text-amber-700">{estoque_baixo.length}</span>
           </div>
-        )}
+          {estoque_baixo.length === 0 ? (
+            <div className="text-slate-400 text-sm">Tudo certo!</div>
+          ) : (
+            <ul className="divide-y divide-slate-100">
+              {estoque_baixo.map((b) => (
+                <li key={b.id} className="flex items-center justify-between py-2">
+                  <span className="text-sm text-slate-700">{b.nome}</span>
+                  <span className={`text-xs font-semibold ${b.quantidade_estoque <= 0 ? 'text-rose-600' : 'text-amber-600'}`}>
+                    {b.quantidade_estoque} / mín {b.estoque_minimo}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
@@ -249,29 +274,6 @@ export default function Dashboard() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="card p-5">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-semibold text-slate-800 flex items-center gap-2">
-              <AlertTriangle className="text-amber-500" size={18} /> Alertas de estoque baixo
-            </h3>
-            <span className="badge bg-amber-100 text-amber-700">{estoque_baixo.length}</span>
-          </div>
-          {estoque_baixo.length === 0 ? (
-            <div className="text-slate-400 text-sm">Tudo certo!</div>
-          ) : (
-            <ul className="divide-y divide-slate-100">
-              {estoque_baixo.map((b) => (
-                <li key={b.id} className="flex items-center justify-between py-2">
-                  <span className="text-sm text-slate-700">{b.nome}</span>
-                  <span className={`text-xs font-semibold ${b.quantidade_estoque <= 0 ? 'text-rose-600' : 'text-amber-600'}`}>
-                    {b.quantidade_estoque} / mín {b.estoque_minimo}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-
-        <div className="card p-5">
           <h3 className="font-semibold text-slate-800 mb-3 flex items-center gap-2">
             <Calendar size={18} className="text-brand-500" /> Últimas saídas
           </h3>
@@ -293,47 +295,47 @@ export default function Dashboard() {
             </ul>
           )}
         </div>
-      </div>
 
-      <div className="card p-5">
-        <h3 className="font-semibold text-slate-800 mb-3">Destinatários que mais receberam</h3>
-        {top_destinatarios.length === 0 ? (
-          <div className="text-slate-400 text-sm">Sem dados ainda.</div>
-        ) : (
-          <>
-            {/* Cards no mobile */}
-            <ul className="sm:hidden divide-y divide-slate-100">
-              {top_destinatarios.map((d, i) => (
-                <li key={i} className="py-2.5 flex items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                    <div className="text-sm font-medium text-slate-800 break-words">{d.nome}</div>
-                    <div className="text-xs text-slate-500 mt-0.5">{labelTipo(d.tipo)}</div>
-                  </div>
-                  <div className="flex-shrink-0 text-right">
-                    <div className="text-sm font-bold text-slate-800">{formatInt(d.total)}</div>
-                    <div className="text-[10px] text-slate-400 uppercase">unidades</div>
-                  </div>
-                </li>
-              ))}
-            </ul>
-
-            {/* Tabela no desktop */}
-            <table className="hidden sm:table w-full text-sm">
-              <thead className="text-slate-500 text-xs uppercase border-b border-slate-100">
-                <tr><th className="text-left py-2">Destinatário</th><th className="text-left">Tipo</th><th className="text-right">Unidades</th></tr>
-              </thead>
-              <tbody>
+        <div className="card p-5">
+          <h3 className="font-semibold text-slate-800 mb-3">Destinatários que mais receberam</h3>
+          {top_destinatarios.length === 0 ? (
+            <div className="text-slate-400 text-sm">Sem dados ainda.</div>
+          ) : (
+            <>
+              {/* Cards no mobile */}
+              <ul className="sm:hidden divide-y divide-slate-100">
                 {top_destinatarios.map((d, i) => (
-                  <tr key={i} className="border-b border-slate-50 last:border-0">
-                    <td className="py-2">{d.nome}</td>
-                    <td className="text-slate-600">{labelTipo(d.tipo)}</td>
-                    <td className="text-right font-semibold">{formatInt(d.total)}</td>
-                  </tr>
+                  <li key={i} className="py-2.5 flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm font-medium text-slate-800 break-words">{d.nome}</div>
+                      <div className="text-xs text-slate-500 mt-0.5">{labelTipo(d.tipo)}</div>
+                    </div>
+                    <div className="flex-shrink-0 text-right">
+                      <div className="text-sm font-bold text-slate-800">{formatInt(d.total)}</div>
+                      <div className="text-[10px] text-slate-400 uppercase">unidades</div>
+                    </div>
+                  </li>
                 ))}
-              </tbody>
-            </table>
-          </>
-        )}
+              </ul>
+
+              {/* Tabela no desktop */}
+              <table className="hidden sm:table w-full text-sm">
+                <thead className="text-slate-500 text-xs uppercase border-b border-slate-100">
+                  <tr><th className="text-left py-2">Destinatário</th><th className="text-left">Tipo</th><th className="text-right">Unidades</th></tr>
+                </thead>
+                <tbody>
+                  {top_destinatarios.map((d, i) => (
+                    <tr key={i} className="border-b border-slate-50 last:border-0">
+                      <td className="py-2">{d.nome}</td>
+                      <td className="text-slate-600">{labelTipo(d.tipo)}</td>
+                      <td className="text-right font-semibold">{formatInt(d.total)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );

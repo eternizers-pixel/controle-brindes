@@ -40,16 +40,35 @@ export default async function handler(req, res) {
     url.searchParams.set('preco_maximo', '0');
 
     const r = await fetch(url.toString(), {
-      headers: { 'Accept': 'application/json' },
+      headers: {
+        'Accept': 'application/json',
+        'User-Agent': 'Mozilla/5.0',
+      },
     });
+
+    const rawText = await r.text();
+    let data;
+    try { data = JSON.parse(rawText); } catch { data = null; }
+
+    // DEBUG: se o XBZ devolver vazio ou erro, mostra o que veio
+    if (req.query.debug === '1') {
+      return res.status(200).json({
+        envUserSet: !!user,
+        envPasswdSet: !!passwd,
+        envUserLen: user?.length || 0,
+        envPasswdLen: passwd?.length || 0,
+        upstreamStatus: r.status,
+        upstreamRaw: rawText.slice(0, 2000),
+        upstreamParsedType: Array.isArray(data) ? 'array' : typeof data,
+        upstreamLen: Array.isArray(data) ? data.length : null,
+      });
+    }
 
     if (!r.ok) {
       return res.status(r.status).json({
         error: `XBZ retornou status ${r.status}`,
       });
     }
-
-    const data = await r.json();
 
     // Simplifica e devolve apenas o que o frontend precisa
     const produtos = (Array.isArray(data) ? data : []).map((p) => ({

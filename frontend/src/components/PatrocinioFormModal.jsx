@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Trash2, Power, PowerOff } from 'lucide-react';
 import Modal from './Modal';
 import { criarPatrocinio, atualizarPatrocinio, excluirPatrocinio } from '../api/client';
-import { RECORRENCIAS, hoje } from '../utils/helpers';
+import { RECORRENCIAS, FORMAS_PAGAMENTO, hoje } from '../utils/helpers';
 import { useToast } from './Toast';
 
 export default function PatrocinioFormModal({ open, patrocinio, onClose, onSaved }) {
@@ -10,7 +10,8 @@ export default function PatrocinioFormModal({ open, patrocinio, onClose, onSaved
   const isEdit = Boolean(patrocinio?.id);
   const [form, setForm] = useState({
     nome: '', valor: '', recorrencia: 'unica',
-    data_inicio: hoje(), data_fim: '', categoria: '', observacao: '', ativo: true,
+    data_inicio: hoje(), data_fim: '', categoria: '', forma_pagamento: '',
+    observacao: '', ativo: true,
   });
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState('');
@@ -25,13 +26,15 @@ export default function PatrocinioFormModal({ open, patrocinio, onClose, onSaved
         data_inicio: patrocinio.data_inicio || hoje(),
         data_fim: patrocinio.data_fim || '',
         categoria: patrocinio.categoria || '',
+        forma_pagamento: patrocinio.forma_pagamento || '',
         observacao: patrocinio.observacao || '',
         ativo: patrocinio.ativo !== false,
       });
     } else {
       setForm({
         nome: '', valor: '', recorrencia: 'unica',
-        data_inicio: hoje(), data_fim: '', categoria: '', observacao: '', ativo: true,
+        data_inicio: hoje(), data_fim: '', categoria: '', forma_pagamento: '',
+        observacao: '', ativo: true,
       });
     }
     setErr('');
@@ -50,6 +53,7 @@ export default function PatrocinioFormModal({ open, patrocinio, onClose, onSaved
         ...form,
         data_fim: form.data_fim || null,
         categoria: form.categoria || null,
+        forma_pagamento: form.forma_pagamento || null,
       };
       if (isEdit) await atualizarPatrocinio(patrocinio.id, payload);
       else await criarPatrocinio(payload);
@@ -159,10 +163,21 @@ export default function PatrocinioFormModal({ open, patrocinio, onClose, onSaved
           </div>
         </div>
 
-        <div>
-          <label className="label">Categoria (opcional)</label>
-          <input className="input" value={form.categoria} onChange={set('categoria')}
-                 placeholder="Esporte, Educação, Saúde, ..." />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div>
+            <label className="label">Forma de pagamento</label>
+            <select className="input" value={form.forma_pagamento} onChange={set('forma_pagamento')}>
+              <option value="">— Selecione —</option>
+              {FORMAS_PAGAMENTO.map((f) => (
+                <option key={f.value} value={f.value}>{f.label}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="label">Categoria (opcional)</label>
+            <input className="input" value={form.categoria} onChange={set('categoria')}
+                   placeholder="Esporte, Educação, ..." />
+          </div>
         </div>
 
         <div>

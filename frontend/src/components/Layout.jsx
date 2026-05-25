@@ -1,11 +1,11 @@
 import { NavLink, Outlet, Link } from 'react-router-dom';
 import {
-  Home as HomeIcon, Package, History, FileText, Gift, HandHeart, BarChart3, HandCoins,
+  Home as HomeIcon, Package, History, FileText, Gift, Send, BarChart3, HandCoins,
 } from 'lucide-react';
 
 const links = [
   { to: '/',              label: 'Início',              mobile: 'Início',    icon: HomeIcon },
-  { to: '/doacao',        label: 'Realizar Doação',     mobile: 'Doação',    icon: HandHeart },
+  { to: '/entregar',      label: 'Entregar Brinde',     mobile: 'Entregar',  icon: Send },
   { to: '/brindes',       label: 'Cadastro de Brindes', mobile: 'Brindes',   icon: Package },
   { to: '/patrocinios',   label: 'Patrocínios',         mobile: 'Patroc.',   icon: HandCoins },
   { to: '/dashboard',     label: 'Dashboard',           mobile: 'Dashboard', icon: BarChart3 },
@@ -14,7 +14,7 @@ const links = [
 ];
 
 // 5 mais usados na nav inferior do mobile
-const mobileLinks = links.filter((l) => ['/', '/doacao', '/brindes', '/patrocinios', '/dashboard'].includes(l.to));
+const mobileLinks = links.filter((l) => ['/', '/entregar', '/brindes', '/patrocinios', '/dashboard'].includes(l.to));
 
 export default function Layout() {
   return (

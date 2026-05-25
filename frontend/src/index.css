@@ -6,8 +6,14 @@
   html, body, #root { height: 100%; }
   /* Previne overflow horizontal que faz modais e fixed elements ultrapassarem
      a largura visível no celular (causa do bug que exige pinch-zoom). */
-  html, body { overflow-x: hidden; max-width: 100vw; }
+  html, body { overflow-x: hidden; width: 100%; }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif; }
+
+  /* iOS Safari auto-zooma quando o input tem font-size < 16px. Forçando 16px
+     no mobile evita o zoom automático ao focar campos. */
+  @media (max-width: 640px) {
+    input, select, textarea { font-size: 16px !important; }
+  }
 }
 
 @layer components {

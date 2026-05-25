@@ -2,7 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
 import Home from './pages/Home';
 import Dashboard from './pages/Dashboard';
-import Estoque from './pages/Estoque';         // "Realizar Doação"
+import Estoque from './pages/Estoque';         // "Entregar Brinde"
 import Brindes from './pages/Brindes';
 import Patrocinios from './pages/Patrocinios';
 import Movimentacoes from './pages/Movimentacoes';
@@ -13,8 +13,9 @@ export default function App() {
     <Routes>
       <Route path="/" element={<Layout />}>
         <Route index                element={<Home />} />
-        <Route path="doacao"        element={<Estoque />} />
-        <Route path="estoque"       element={<Navigate to="/doacao" replace />} />
+        <Route path="entregar"      element={<Estoque />} />
+        <Route path="doacao"        element={<Navigate to="/entregar" replace />} />
+        <Route path="estoque"       element={<Navigate to="/entregar" replace />} />
         <Route path="brindes"       element={<Brindes />} />
         <Route path="patrocinios"   element={<Patrocinios />} />
         <Route path="dashboard"     element={<Dashboard />} />

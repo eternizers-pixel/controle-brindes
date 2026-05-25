@@ -185,6 +185,7 @@ export async function criarPatrocinio(payload) {
     data_inicio: payload.data_inicio,
     data_fim: payload.data_fim || null,
     categoria: payload.categoria || null,
+    forma_pagamento: payload.forma_pagamento || null,
     observacao: payload.observacao || null,
     ativo: payload.ativo !== false,
   }).select().single());
@@ -193,6 +194,7 @@ export async function criarPatrocinio(payload) {
 export async function atualizarPatrocinio(id, payload) {
   const patch = { ...payload, atualizado_em: new Date().toISOString() };
   if ('valor' in patch) patch.valor = Number(patch.valor);
+  if ('forma_pagamento' in patch) patch.forma_pagamento = patch.forma_pagamento || null;
   return await handle(supabase.from('patrocinios').update(patch).eq('id', id).select().single());
 }
 
@@ -356,6 +358,15 @@ export async function relPorDestinatario(params = {}) {
   return Object.values(agrup)
     .map((r) => ({ ...r, variedade: r.brindes.size, brindes: undefined }))
     .sort((a, b) => b.unidades - a.unidades);
+}
+
+export async function relPatrocinios(params = {}) {
+  let q = supabase.from('patrocinios').select('*').order('nome');
+  if (params.ativo !== undefined) q = q.eq('ativo', params.ativo);
+  if (params.inicio)              q = q.gte('data_inicio', params.inicio);
+  if (params.fim)                 q = q.lte('data_inicio', params.fim);
+  if (params.forma_pagamento)     q = q.eq('forma_pagamento', params.forma_pagamento);
+  return (await handle(q)) || [];
 }
 
 export async function relCustoEntregas(params = {}) {

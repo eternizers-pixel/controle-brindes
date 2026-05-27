@@ -100,10 +100,15 @@ export default function PesquisaXBZ() {
           <h1 className="text-xl sm:text-2xl font-bold text-slate-800">Pesquisa XBZ — Lançamentos</h1>
           <p className="text-slate-500 text-sm">
             Preços dos produtos da aba "Lançamentos" do XBZ, ordenados do menor pro maior.
-            {data?.atualizado_em && (
-              <> · Atualizado em {new Date(data.atualizado_em).toLocaleString('pt-BR')}</>
-            )}
           </p>
+          {data && (
+            <p className="text-xs text-slate-400 mt-1">
+              Preços atualizados em {new Date(data.atualizado_em).toLocaleString('pt-BR')}
+              {data.lista_codigos_atualizada_em && (
+                <> · Lista de códigos de {data.lista_codigos_atualizada_em} <span className="text-slate-300">(peça ao Claude para atualizar)</span></>
+              )}
+            </p>
+          )}
         </div>
         <button
           className="btn-primary w-full md:w-auto"

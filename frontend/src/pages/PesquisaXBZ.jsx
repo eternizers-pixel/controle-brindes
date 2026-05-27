@@ -5,6 +5,13 @@ import { Lock, RefreshCw, Search, Package2, ExternalLink, AlertTriangle } from '
 import { formatBRL } from '../utils/helpers';
 import { useToast } from '../components/Toast';
 
+const ORDENACOES = [
+  { value: 'preco_asc',  label: 'Menor preço' },
+  { value: 'preco_desc', label: 'Maior preço' },
+  { value: 'az',         label: 'Nome (A-Z)' },
+  { value: 'za',         label: 'Nome (Z-A)' },
+];
+
 export default function PesquisaXBZ() {
   const toast = useToast();
   const [senha, setSenha] = useState('');
@@ -13,6 +20,7 @@ export default function PesquisaXBZ() {
   const [erro, setErro] = useState('');
   const [data, setData] = useState(null);
   const [busca, setBusca] = useState('');
+  const [ordem, setOrdem] = useState('preco_asc');
 
   const carregar = async (senhaAtual = senha) => {
     setLoading(true);
@@ -48,15 +56,26 @@ export default function PesquisaXBZ() {
 
   const produtosFiltrados = useMemo(() => {
     if (!data?.produtos) return [];
-    if (!busca.trim()) return data.produtos;
-    const q = busca.toLowerCase();
-    return data.produtos.filter(
-      (p) =>
-        (p.nome || '').toLowerCase().includes(q) ||
-        (p.codigo_amigavel || '').toLowerCase().includes(q) ||
-        (p.codigo_composto || '').toLowerCase().includes(q)
-    );
-  }, [data, busca]);
+    let lista = data.produtos;
+    if (busca.trim()) {
+      const q = busca.toLowerCase();
+      lista = lista.filter(
+        (p) =>
+          (p.nome || '').toLowerCase().includes(q) ||
+          (p.codigo_amigavel || '').toLowerCase().includes(q) ||
+          (p.codigo_composto || '').toLowerCase().includes(q)
+      );
+    }
+    const arr = [...lista];
+    switch (ordem) {
+      case 'preco_desc': arr.sort((a, b) => Number(b.preco || 0) - Number(a.preco || 0)); break;
+      case 'az':         arr.sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR')); break;
+      case 'za':         arr.sort((a, b) => (b.nome || '').localeCompare(a.nome || '', 'pt-BR')); break;
+      case 'preco_asc':
+      default:           arr.sort((a, b) => Number(a.preco || 0) - Number(b.preco || 0));
+    }
+    return arr;
+  }, [data, busca, ordem]);
 
   // ===== Tela de senha =====
   if (!autenticado) {
@@ -143,16 +162,27 @@ export default function PesquisaXBZ() {
         </div>
       )}
 
-      {/* Busca */}
+      {/* Busca + ordenação */}
       <div className="card p-3">
-        <div className="relative">
-          <Search className="absolute left-3 top-2.5 text-slate-400" size={16} />
-          <input
-            className="input pl-9"
-            placeholder="Filtrar por nome ou código…"
-            value={busca}
-            onChange={(e) => setBusca(e.target.value)}
-          />
+        <div className="flex gap-2 flex-col sm:flex-row">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-2.5 text-slate-400" size={16} />
+            <input
+              className="input pl-9"
+              placeholder="Filtrar por nome ou código…"
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+            />
+          </div>
+          <select
+            className="input sm:w-44"
+            value={ordem}
+            onChange={(e) => setOrdem(e.target.value)}
+          >
+            {ORDENACOES.map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
         </div>
       </div>
 
@@ -169,87 +199,69 @@ export default function PesquisaXBZ() {
         </div>
       )}
 
-      {/* Tabela de produtos */}
+      {/* Grid de produtos com foto grande */}
       {data && produtosFiltrados.length > 0 && (
-        <div className="card overflow-hidden">
-          {/* Mobile: lista de cards */}
-          <ul className="sm:hidden divide-y divide-slate-100">
-            {produtosFiltrados.map((p, i) => (
-              <li key={p.id} className="p-3 flex gap-3 items-center">
-                <div className="w-12 text-right text-xs text-slate-400 font-mono">#{i + 1}</div>
-                {p.foto ? (
-                  <img src={p.foto} alt="" className="w-14 h-14 rounded object-cover flex-shrink-0" />
-                ) : (
-                  <div className="w-14 h-14 rounded bg-slate-100 grid place-items-center text-slate-300 flex-shrink-0">
-                    <Package2 size={20} />
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
+          {produtosFiltrados.map((p, i) => {
+            const conteudo = (
+              <>
+                {/* Foto grande - destaque principal */}
+                <div className="relative aspect-square bg-slate-100">
+                  {p.foto ? (
+                    <img src={p.foto} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full grid place-items-center text-slate-300">
+                      <Package2 size={56} />
+                    </div>
+                  )}
+                  {/* Rank no canto */}
+                  <div className="absolute top-2 left-2">
+                    <span className="badge bg-slate-900/70 text-white">#{i + 1}</span>
                   </div>
-                )}
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-slate-800 truncate">{p.nome}</div>
-                  <div className="text-[11px] text-slate-500">{p.codigo_composto || p.codigo_amigavel}</div>
-                </div>
-                <div className="text-right flex-shrink-0">
-                  <div className="text-base font-bold text-emerald-700">{formatBRL(p.preco)}</div>
-                  {p.variantes > 1 && (
-                    <div className="text-[10px] text-slate-400">{p.variantes} variantes</div>
+                  {p.link && (
+                    <div className="absolute top-2 right-2">
+                      <span className="badge bg-white/90 text-slate-600 shadow-sm" title="Abrir no XBZ">
+                        <ExternalLink size={12} />
+                      </span>
+                    </div>
                   )}
                 </div>
-              </li>
-            ))}
-          </ul>
 
-          {/* Desktop: tabela */}
-          <table className="hidden sm:table w-full text-sm">
-            <thead className="bg-slate-50 text-slate-600 text-xs uppercase">
-              <tr>
-                <th className="text-left px-3 py-2 w-10">#</th>
-                <th className="text-left">Foto</th>
-                <th className="text-left">Produto</th>
-                <th className="text-left">Código</th>
-                <th className="text-right">Variantes</th>
-                <th className="text-right pr-4">Menor preço</th>
-                <th className="text-center w-10"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {produtosFiltrados.map((p, i) => (
-                <tr key={p.id} className="hover:bg-slate-50">
-                  <td className="px-3 py-2 text-slate-400 font-mono">{i + 1}</td>
-                  <td>
-                    {p.foto ? (
-                      <img src={p.foto} alt="" className="w-12 h-12 rounded object-cover" />
-                    ) : (
-                      <div className="w-12 h-12 rounded bg-slate-100 grid place-items-center text-slate-300">
-                        <Package2 size={18} />
-                      </div>
-                    )}
-                  </td>
-                  <td className="font-medium text-slate-800">{p.nome}</td>
-                  <td className="text-slate-500 text-xs">
-                    <div>{p.codigo_amigavel}</div>
+                {/* Info abaixo da foto */}
+                <div className="p-2.5 sm:p-3 space-y-1 flex-1 flex flex-col">
+                  <div className="font-semibold text-sm text-slate-800 leading-tight line-clamp-2 min-h-[2.5rem]">
+                    {p.nome}
+                  </div>
+                  <div className="text-[11px] text-slate-500">
+                    <div>cód. {p.codigo_amigavel}</div>
                     {p.codigo_composto && p.codigo_composto !== p.codigo_amigavel && (
-                      <div className="text-[10px]">{p.codigo_composto}</div>
+                      <div className="text-[10px] text-slate-400 truncate">{p.codigo_composto}</div>
                     )}
-                  </td>
-                  <td className="text-right text-slate-600">{p.variantes}</td>
-                  <td className="text-right pr-4 font-bold text-emerald-700">{formatBRL(p.preco)}</td>
-                  <td className="text-center">
-                    {p.link && (
-                      <a
-                        href={p.link}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center text-slate-400 hover:text-brand-600"
-                        title="Abrir no XBZ"
-                      >
-                        <ExternalLink size={16} />
-                      </a>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  </div>
+                  <div className="text-xs text-slate-500 mt-auto pt-1 flex items-baseline justify-between">
+                    <span>{p.variantes > 1 ? `${p.variantes} variantes` : ''}</span>
+                    <span className="text-base font-bold text-emerald-700">{formatBRL(p.preco)}</span>
+                  </div>
+                </div>
+              </>
+            );
+            return p.link ? (
+              <a
+                key={p.id}
+                href={p.link}
+                target="_blank"
+                rel="noreferrer"
+                className="card overflow-hidden flex flex-col transition-all hover:shadow-soft active:scale-[.99] hover:border-amber-200"
+                title="Abrir no XBZ"
+              >
+                {conteudo}
+              </a>
+            ) : (
+              <div key={p.id} className="card overflow-hidden flex flex-col">
+                {conteudo}
+              </div>
+            );
+          })}
         </div>
       )}
 

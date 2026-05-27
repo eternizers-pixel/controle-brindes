@@ -1,6 +1,6 @@
 import { NavLink, Outlet, Link } from 'react-router-dom';
 import {
-  Home as HomeIcon, Package, History, FileText, Gift, Send, BarChart3, HandCoins,
+  Home as HomeIcon, Package, History, FileText, Gift, Send, BarChart3, HandCoins, Search,
 } from 'lucide-react';
 
 const links = [
@@ -11,6 +11,7 @@ const links = [
   { to: '/dashboard',     label: 'Dashboard',           mobile: 'Dashboard', icon: BarChart3 },
   { to: '/movimentacoes', label: 'Histórico',           mobile: 'Histórico', icon: History },
   { to: '/relatorios',    label: 'Relatórios',          mobile: 'Relat.',    icon: FileText },
+  { to: '/pesquisa-xbz',  label: 'Pesquisa XBZ',        mobile: 'XBZ',       icon: Search },
 ];
 
 // 5 mais usados na nav inferior do mobile

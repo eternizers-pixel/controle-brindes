@@ -1,5 +1,9 @@
 // Vercel Serverless Function
-// Raspa códigos da página de Lançamentos do XBZ e busca preços em paralelo na API.
+// Lê códigos da aba "Lançamentos" do XBZ de uma lista cacheada e busca preços em paralelo na API.
+// (A raspagem live do xbzbrindes.com.br é bloqueada — 403 do Cloudflare/WAF deles
+//  contra IPs de datacenter. Por isso usamos lista cacheada que é atualizada manualmente
+//  via Claude in Chrome quando o XBZ muda os lançamentos.)
+//
 // Uso: GET /api/lancamentos-precos?password=...
 //
 // Env vars necessárias:
@@ -8,27 +12,9 @@
 //   XBZ_PASSWD     - senha (mesmo do /api/xbz-search)
 //   XBZ_WEB_TOKEN  - opcional, default "xbz"
 
-const LANCAMENTOS_URL = 'https://www.xbzbrindes.com.br/lancamentos';
-const XBZ_API = 'https://api.minhaxbz.com.br:5001/api/ruiz/consultaEstoque';
+import { LANCAMENTOS_CODIGOS, ATUALIZADO_EM } from './lancamentos-codes.js';
 
-// Headers que imitam um navegador Chrome real (XBZ bloqueia User-Agent simples)
-const BROWSER_HEADERS = {
-  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-  'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-  'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
-  'Cache-Control': 'no-cache',
-  'Pragma': 'no-cache',
-  'Sec-Ch-Ua': '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
-  'Sec-Ch-Ua-Mobile': '?0',
-  'Sec-Ch-Ua-Platform': '"Windows"',
-  'Sec-Fetch-Dest': 'document',
-  'Sec-Fetch-Mode': 'navigate',
-  'Sec-Fetch-Site': 'same-origin',
-  'Sec-Fetch-User': '?1',
-  'Upgrade-Insecure-Requests': '1',
-  'Referer': 'https://www.xbzbrindes.com.br/',
-  'DNT': '1',
-};
+const XBZ_API = 'https://api.minhaxbz.com.br:5001/api/ruiz/consultaEstoque';
 
 export default async function handler(req, res) {
   try {
@@ -48,22 +34,11 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'Credenciais XBZ nao configuradas' });
     }
 
-    // 1) Raspa a página de lançamentos para obter os códigos
-    const htmlRes = await fetch(LANCAMENTOS_URL, { headers: BROWSER_HEADERS });
-    if (!htmlRes.ok) {
-      return res.status(502).json({ error: `Falha ao buscar lancamentos (${htmlRes.status})` });
-    }
-    const html = await htmlRes.text();
-    // padrão: <h3 ...><a [attrs]>CODIGO</a></h3>
-    const codeRegex = /<h3[^>]*>\s*<a[^>]*>\s*(\d{4,6}[A-Z]?)\s*<\/a>/gi;
-    const codes = [];
-    let m;
-    while ((m = codeRegex.exec(html)) !== null) {
-      const c = m[1].toUpperCase();
-      if (!codes.includes(c)) codes.push(c);
-    }
+    // 1) Lista de códigos vem do cache em lancamentos-codes.js
+    //    (atualizar manualmente via Claude in Chrome quando XBZ trocar os lançamentos)
+    const codes = [...new Set(LANCAMENTOS_CODIGOS)];
     if (codes.length === 0) {
-      return res.status(500).json({ error: 'Nenhum codigo encontrado em /lancamentos' });
+      return res.status(500).json({ error: 'Lista de codigos cacheada esta vazia' });
     }
 
     // 2) Para cada código, busca preços na API do XBZ em paralelo
@@ -84,7 +59,10 @@ export default async function handler(req, res) {
         url.searchParams.set('preco_minimo', '0');
         url.searchParams.set('preco_maximo', '0');
         const r = await fetch(url.toString(), {
-          headers: { 'Accept': 'application/json', 'User-Agent': 'Mozilla/5.0' },
+          headers: {
+            'Accept': 'application/json',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+          },
         });
         if (!r.ok) return { codigo, erro: `status ${r.status}` };
         const rawText = await r.text();
@@ -141,6 +119,7 @@ export default async function handler(req, res) {
       produtos,
       erros,
       atualizado_em: new Date().toISOString(),
+      lista_codigos_atualizada_em: ATUALIZADO_EM,
     });
   } catch (e) {
     return res.status(500).json({ error: e?.message || 'erro ao processar' });

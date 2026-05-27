@@ -5,34 +5,61 @@ import { getBrindes } from '../api/client';
 import { formatBRL, formatInt, FAIXAS_CUSTO, getFaixaCusto, getFaixaByKey } from '../utils/helpers';
 import BrindeFormModal from '../components/BrindeFormModal';
 
+const ORDENACOES = [
+  { value: 'az',           label: 'Nome (A-Z)' },
+  { value: 'za',           label: 'Nome (Z-A)' },
+  { value: 'preco_asc',    label: 'Menor preço' },
+  { value: 'preco_desc',   label: 'Maior preço' },
+  { value: 'estoque_desc', label: 'Maior estoque' },
+  { value: 'estoque_asc',  label: 'Menor estoque' },
+];
+
 export default function Brindes() {
   const [brindes, setBrindes] = useState([]);
   const [busca, setBusca] = useState('');
   const [loading, setLoading] = useState(true);
   const [editFor, setEditFor] = useState(null);
   const [novoOpen, setNovoOpen] = useState(false);
+  const [ordem, setOrdem] = useState('az');
   const [searchParams, setSearchParams] = useSearchParams();
 
   const faixaKey = searchParams.get('faixa') || '';
   const faixaSelecionada = faixaKey ? getFaixaByKey(faixaKey) : null;
 
-  const load = async () => {
-    setLoading(true);
+  // load silencioso = não troca para "Carregando…" (evita resetar scroll)
+  const load = async ({ silent = false } = {}) => {
+    if (!silent) setLoading(true);
     try {
       const data = await getBrindes({ search: busca });
       setBrindes(data);
-    } finally { setLoading(false); }
+    } finally { if (!silent) setLoading(false); }
   };
   useEffect(() => { load(); }, []);
-  useEffect(() => { const t = setTimeout(load, 250); return () => clearTimeout(t); }, [busca]);
+  useEffect(() => {
+    const t = setTimeout(() => load({ silent: true }), 250);
+    return () => clearTimeout(t);
+  }, [busca]);
 
   const brindesFiltrados = useMemo(() => {
-    if (!faixaSelecionada) return brindes;
-    return brindes.filter((b) => {
-      const c = Number(b.custo_unitario || 0);
-      return c >= faixaSelecionada.min && c < faixaSelecionada.max;
-    });
-  }, [brindes, faixaSelecionada]);
+    let lista = brindes;
+    if (faixaSelecionada) {
+      lista = lista.filter((b) => {
+        const c = Number(b.custo_unitario || 0);
+        return c >= faixaSelecionada.min && c < faixaSelecionada.max;
+      });
+    }
+    const arr = [...lista];
+    switch (ordem) {
+      case 'za':           arr.sort((a, b) => (b.nome || '').localeCompare(a.nome || '', 'pt-BR')); break;
+      case 'preco_asc':    arr.sort((a, b) => Number(a.custo_unitario || 0) - Number(b.custo_unitario || 0)); break;
+      case 'preco_desc':   arr.sort((a, b) => Number(b.custo_unitario || 0) - Number(a.custo_unitario || 0)); break;
+      case 'estoque_asc':  arr.sort((a, b) => Number(a.quantidade_estoque || 0) - Number(b.quantidade_estoque || 0)); break;
+      case 'estoque_desc': arr.sort((a, b) => Number(b.quantidade_estoque || 0) - Number(a.quantidade_estoque || 0)); break;
+      case 'az':
+      default:             arr.sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR'));
+    }
+    return arr;
+  }, [brindes, faixaSelecionada, ordem]);
 
   const setFaixa = (key) => {
     if (!key) searchParams.delete('faixa'); else searchParams.set('faixa', key);
@@ -63,13 +90,22 @@ export default function Brindes() {
             />
           </div>
           <select
-            className="input sm:w-56"
+            className="input sm:w-44"
             value={faixaKey}
             onChange={(e) => setFaixa(e.target.value)}
           >
-            <option value="">Todas as faixas de custo</option>
+            <option value="">Todas as faixas</option>
             {FAIXAS_CUSTO.map((f) => (
               <option key={f.key} value={f.key}>{f.label}</option>
+            ))}
+          </select>
+          <select
+            className="input sm:w-44"
+            value={ordem}
+            onChange={(e) => setOrdem(e.target.value)}
+          >
+            {ORDENACOES.map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
             ))}
           </select>
         </div>
@@ -162,7 +198,7 @@ export default function Brindes() {
         open={!!editFor || novoOpen}
         brinde={editFor}
         onClose={() => { setEditFor(null); setNovoOpen(false); }}
-        onSaved={load}
+        onSaved={() => load({ silent: true })}
       />
     </div>
   );

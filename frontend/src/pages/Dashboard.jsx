@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Package, Boxes, DollarSign, TrendingUp, AlertTriangle, Calendar, Tag,
-  HandCoins, Repeat, Wallet, LineChart,
+  HandCoins, Repeat, Wallet, LineChart, ArrowRight,
 } from 'lucide-react';
 import { Bar, Doughnut } from 'react-chartjs-2';
 import {
@@ -251,7 +251,12 @@ export default function Dashboard() {
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="card p-5 lg:col-span-2">
-          <h3 className="font-semibold text-slate-800 mb-4">Brindes mais entregues</h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold text-slate-800">Brindes mais entregues</h3>
+            <Link to="/movimentacoes" className="text-xs text-brand-600 hover:text-brand-800 flex items-center gap-1">
+              Ver tudo <ArrowRight size={12} />
+            </Link>
+          </div>
           {mais_entregues.length === 0
             ? <div className="text-slate-400 text-sm">Sem saídas registradas ainda.</div>
             : <div style={{ height: 280 }}><Bar data={barData} options={{
@@ -262,7 +267,12 @@ export default function Dashboard() {
         </div>
 
         <div className="card p-5">
-          <h3 className="font-semibold text-slate-800 mb-4">Saídas por tipo</h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold text-slate-800">Saídas por tipo</h3>
+            <Link to="/movimentacoes" className="text-xs text-brand-600 hover:text-brand-800 flex items-center gap-1">
+              Ver tudo <ArrowRight size={12} />
+            </Link>
+          </div>
           {saidas_por_tipo.length === 0
             ? <div className="text-slate-400 text-sm">Sem dados.</div>
             : <div style={{ height: 280 }}><Doughnut data={pieData} options={{
@@ -274,9 +284,14 @@ export default function Dashboard() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="card p-5">
-          <h3 className="font-semibold text-slate-800 mb-3 flex items-center gap-2">
-            <Calendar size={18} className="text-brand-500" /> Últimas saídas
-          </h3>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold text-slate-800 flex items-center gap-2">
+              <Calendar size={18} className="text-brand-500" /> Últimas saídas
+            </h3>
+            <Link to="/movimentacoes" className="text-xs text-brand-600 hover:text-brand-800 flex items-center gap-1">
+              Ver tudo <ArrowRight size={12} />
+            </Link>
+          </div>
           {ultimas_saidas.length === 0 ? (
             <div className="text-slate-400 text-sm">Nenhuma saída registrada.</div>
           ) : (
@@ -297,7 +312,12 @@ export default function Dashboard() {
         </div>
 
         <div className="card p-5">
-          <h3 className="font-semibold text-slate-800 mb-3">Destinatários que mais receberam</h3>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold text-slate-800">Destinatários que mais receberam</h3>
+            <Link to="/relatorios" className="text-xs text-brand-600 hover:text-brand-800 flex items-center gap-1">
+              Ver tudo <ArrowRight size={12} />
+            </Link>
+          </div>
           {top_destinatarios.length === 0 ? (
             <div className="text-slate-400 text-sm">Sem dados ainda.</div>
           ) : (

@@ -11,18 +11,23 @@
 const LANCAMENTOS_URL = 'https://www.xbzbrindes.com.br/lancamentos';
 const XBZ_API = 'https://api.minhaxbz.com.br:5001/api/ruiz/consultaEstoque';
 
-// Headers que imitam um navegador real (XBZ bloqueia User-Agent simples)
+// Headers que imitam um navegador Chrome real (XBZ bloqueia User-Agent simples)
 const BROWSER_HEADERS = {
   'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-  'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+  'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
   'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
   'Cache-Control': 'no-cache',
   'Pragma': 'no-cache',
+  'Sec-Ch-Ua': '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
+  'Sec-Ch-Ua-Mobile': '?0',
+  'Sec-Ch-Ua-Platform': '"Windows"',
   'Sec-Fetch-Dest': 'document',
   'Sec-Fetch-Mode': 'navigate',
-  'Sec-Fetch-Site': 'none',
+  'Sec-Fetch-Site': 'same-origin',
   'Sec-Fetch-User': '?1',
   'Upgrade-Insecure-Requests': '1',
+  'Referer': 'https://www.xbzbrindes.com.br/',
+  'DNT': '1',
 };
 
 export default async function handler(req, res) {

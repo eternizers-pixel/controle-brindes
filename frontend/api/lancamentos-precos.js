@@ -11,6 +11,20 @@
 const LANCAMENTOS_URL = 'https://www.xbzbrindes.com.br/lancamentos';
 const XBZ_API = 'https://api.minhaxbz.com.br:5001/api/ruiz/consultaEstoque';
 
+// Headers que imitam um navegador real (XBZ bloqueia User-Agent simples)
+const BROWSER_HEADERS = {
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+  'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+  'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
+  'Cache-Control': 'no-cache',
+  'Pragma': 'no-cache',
+  'Sec-Fetch-Dest': 'document',
+  'Sec-Fetch-Mode': 'navigate',
+  'Sec-Fetch-Site': 'none',
+  'Sec-Fetch-User': '?1',
+  'Upgrade-Insecure-Requests': '1',
+};
+
 export default async function handler(req, res) {
   try {
     // Verifica senha admin
@@ -30,9 +44,7 @@ export default async function handler(req, res) {
     }
 
     // 1) Raspa a página de lançamentos para obter os códigos
-    const htmlRes = await fetch(LANCAMENTOS_URL, {
-      headers: { 'User-Agent': 'Mozilla/5.0' },
-    });
+    const htmlRes = await fetch(LANCAMENTOS_URL, { headers: BROWSER_HEADERS });
     if (!htmlRes.ok) {
       return res.status(502).json({ error: `Falha ao buscar lancamentos (${htmlRes.status})` });
     }

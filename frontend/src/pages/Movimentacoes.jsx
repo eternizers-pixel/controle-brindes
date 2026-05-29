@@ -1,15 +1,23 @@
 import { useEffect, useState } from 'react';
-import { ArrowDownCircle, ArrowUpCircle, Filter, Trash2, MessageSquare } from 'lucide-react';
+import {
+  ArrowDownCircle, ArrowUpCircle, Filter, Trash2, MessageSquare, X, Calendar,
+  Package, Users, Tag, DollarSign,
+} from 'lucide-react';
 import { getMovimentacoes, getBrindes, removerMovimentacao } from '../api/client';
 import { formatBRL, formatInt, formatDate, labelTipo, TIPOS_SOLICITANTE } from '../utils/helpers';
+import Modal from '../components/Modal';
+import { useToast } from '../components/Toast';
 
 export default function Movimentacoes() {
+  const toast = useToast();
   const [movs, setMovs] = useState([]);
   const [brindes, setBrindes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filtros, setFiltros] = useState({
     tipo: '', brinde_id: '', destinatario: '', tipo_solicitante: '', inicio: '', fim: '',
   });
+  const [detalheFor, setDetalheFor] = useState(null);
+  const [mostrarFiltros, setMostrarFiltros] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -27,142 +35,264 @@ export default function Movimentacoes() {
   const limpar = () => setFiltros({ tipo: '', brinde_id: '', destinatario: '', tipo_solicitante: '', inicio: '', fim: '' });
 
   const estornar = async (mov) => {
-    if (!window.confirm('Estornar esta movimentação? O estoque será revertido.')) return;
-    await removerMovimentacao(mov.id);
-    load();
+    if (!window.confirm('Estornar esta movimentação? O estoque será revertido. Esta ação não pode ser desfeita.')) return;
+    try {
+      await removerMovimentacao(mov.id);
+      toast.success('Movimentação estornada.');
+      setDetalheFor(null);
+      load();
+    } catch (e) {
+      toast.error(e.message);
+    }
   };
 
+  const filtroAtivo = Object.values(filtros).some((v) => v);
+
   return (
-    <div className="space-y-4">
-      <header>
-        <h1 className="text-xl sm:text-2xl font-bold text-slate-800">Histórico de movimentações</h1>
-        <p className="text-slate-500 text-sm">Toda entrada e saída registrada no sistema</p>
+    <div className="space-y-4 max-w-5xl mx-auto">
+      <header className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-800">Histórico de movimentações</h1>
+          <p className="text-slate-500 text-sm">
+            {loading ? 'Carregando…' : `${movs.length} ${movs.length === 1 ? 'registro' : 'registros'}`}
+          </p>
+        </div>
+        <button
+          className={`btn-outline text-sm flex-shrink-0 ${filtroAtivo ? 'border-brand-400 text-brand-700 bg-brand-50' : ''}`}
+          onClick={() => setMostrarFiltros((v) => !v)}
+        >
+          <Filter size={14}/>
+          Filtros
+          {filtroAtivo && (
+            <span className="ml-1 inline-flex items-center justify-center bg-brand-600 text-white text-[10px] font-bold rounded-full w-4 h-4">
+              !
+            </span>
+          )}
+        </button>
       </header>
 
-      <div className="card p-4">
-        <div className="flex items-center gap-2 text-slate-600 mb-3 text-sm font-medium">
-          <Filter size={16} /> Filtros
+      {/* Filtros (colapsáveis) */}
+      {mostrarFiltros && (
+        <div className="card p-4">
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            <select className="input" value={filtros.tipo} onChange={set('tipo')}>
+              <option value="">Tipo (todos)</option>
+              <option value="entrada">Entradas</option>
+              <option value="saida">Saídas</option>
+            </select>
+            <select className="input" value={filtros.brinde_id} onChange={set('brinde_id')}>
+              <option value="">Brinde (todos)</option>
+              {brindes.map((b) => <option key={b.id} value={b.id}>{b.nome}</option>)}
+            </select>
+            <select className="input" value={filtros.tipo_solicitante} onChange={set('tipo_solicitante')}>
+              <option value="">Solicitante (todos)</option>
+              {TIPOS_SOLICITANTE.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+            </select>
+            <input className="input" placeholder="Destinatário…" value={filtros.destinatario} onChange={set('destinatario')} />
+            <input className="input" type="date" value={filtros.inicio} onChange={set('inicio')} />
+            <input className="input" type="date" value={filtros.fim} onChange={set('fim')} />
+          </div>
+          {filtroAtivo && (
+            <div className="flex justify-end mt-3">
+              <button className="btn-ghost text-sm" onClick={limpar}>
+                <X size={14}/> Limpar filtros
+              </button>
+            </div>
+          )}
         </div>
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-          <select className="input" value={filtros.tipo} onChange={set('tipo')}>
-            <option value="">Tipo (todos)</option>
-            <option value="entrada">Entradas</option>
-            <option value="saida">Saídas</option>
-          </select>
-          <select className="input" value={filtros.brinde_id} onChange={set('brinde_id')}>
-            <option value="">Brinde (todos)</option>
-            {brindes.map((b) => <option key={b.id} value={b.id}>{b.nome}</option>)}
-          </select>
-          <select className="input" value={filtros.tipo_solicitante} onChange={set('tipo_solicitante')}>
-            <option value="">Solicitante (todos)</option>
-            {TIPOS_SOLICITANTE.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-          </select>
-          <input className="input" placeholder="Destinatário…" value={filtros.destinatario} onChange={set('destinatario')} />
-          <input className="input" type="date" value={filtros.inicio} onChange={set('inicio')} placeholder="Início" />
-          <input className="input" type="date" value={filtros.fim} onChange={set('fim')} placeholder="Fim" />
-        </div>
-        <div className="flex justify-end mt-3">
-          <button className="btn-ghost text-sm" onClick={limpar}>Limpar filtros</button>
-        </div>
-      </div>
+      )}
 
+      {/* Lista */}
       {loading ? (
         <div className="card p-6 text-slate-500">Carregando…</div>
       ) : movs.length === 0 ? (
         <div className="card p-10 text-center text-slate-500">Nenhuma movimentação encontrada.</div>
       ) : (
-        <>
-          {/* MOBILE: cards */}
-          <div className="md:hidden space-y-2">
-            {movs.map((m) => (
-              <div key={m.id} className="card p-3">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    {m.tipo === 'entrada' ? (
-                      <span className="badge bg-emerald-100 text-emerald-700"><ArrowUpCircle size={12} className="mr-1"/>Entrada</span>
-                    ) : (
-                      <span className="badge bg-rose-100 text-rose-700"><ArrowDownCircle size={12} className="mr-1"/>Saída</span>
-                    )}
-                    <span className="text-xs text-slate-500">{formatDate(m.data)}</span>
-                  </div>
-                  <button className="text-slate-400 hover:text-rose-600" onClick={() => estornar(m)} title="Estornar">
-                    <Trash2 size={14} />
-                  </button>
+        <div className="space-y-2">
+          {movs.map((m) => {
+            const saida = m.tipo === 'saida';
+            return (
+              <button
+                key={m.id}
+                type="button"
+                onClick={() => setDetalheFor(m)}
+                className={`card w-full text-left p-3 sm:p-4 flex items-center gap-3 hover:shadow-soft active:scale-[.99] transition-all border-l-4 ${
+                  saida ? 'border-l-rose-400' : 'border-l-emerald-400'
+                }`}
+              >
+                {/* Ícone do tipo */}
+                <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex-shrink-0 grid place-items-center ${
+                  saida ? 'bg-rose-100 text-rose-600' : 'bg-emerald-100 text-emerald-600'
+                }`}>
+                  {saida ? <ArrowDownCircle size={22}/> : <ArrowUpCircle size={22}/>}
                 </div>
-                <div className="mt-1 flex items-baseline justify-between gap-2">
-                  <div className="font-medium text-slate-800 truncate">{m.brinde_nome}</div>
-                  <div className={`font-bold ${m.tipo === 'saida' ? 'text-rose-600' : 'text-emerald-600'}`}>
-                    {m.tipo === 'saida' ? '−' : '+'}{formatInt(m.quantidade)}
-                  </div>
-                </div>
-                {(m.destinatario_nome || m.tipo_solicitante) && (
-                  <div className="text-xs text-slate-600 mt-1">
-                    {m.destinatario_nome || '—'}{m.tipo_solicitante ? ` (${labelTipo(m.tipo_solicitante)})` : ''}
-                  </div>
-                )}
-                <div className="text-xs text-slate-500 mt-0.5">{formatBRL(m.custo_total)}</div>
-                {m.observacao && (
-                  <div className="mt-2 text-xs text-slate-600 bg-slate-50 rounded p-2 flex items-start gap-1.5">
-                    <MessageSquare size={12} className="mt-0.5 flex-shrink-0 text-slate-400"/>
-                    <span className="italic">{m.observacao}</span>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
 
-          {/* DESKTOP: tabela */}
-          <div className="card overflow-hidden hidden md:block">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-slate-50 text-slate-600 text-xs uppercase">
-                  <tr>
-                    <th className="text-left px-4 py-3">Data</th>
-                    <th className="text-left">Tipo</th>
-                    <th className="text-left">Brinde</th>
-                    <th className="text-right">Qtd</th>
-                    <th className="text-left">Para quem</th>
-                    <th className="text-left">Solicitante</th>
-                    <th className="text-left">Observação</th>
-                    <th className="text-right">Custo</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {movs.map((m) => (
-                    <tr key={m.id} className="hover:bg-slate-50">
-                      <td className="px-4 py-2.5 whitespace-nowrap">{formatDate(m.data)}</td>
-                      <td>
-                        {m.tipo === 'entrada' ? (
-                          <span className="badge bg-emerald-100 text-emerald-700"><ArrowUpCircle size={12} className="mr-1"/>Entrada</span>
-                        ) : (
-                          <span className="badge bg-rose-100 text-rose-700"><ArrowDownCircle size={12} className="mr-1"/>Saída</span>
-                        )}
-                      </td>
-                      <td className="font-medium text-slate-700">{m.brinde_nome}</td>
-                      <td className={`text-right font-semibold ${m.tipo === 'saida' ? 'text-rose-600' : 'text-emerald-600'}`}>
-                        {m.tipo === 'saida' ? '−' : '+'}{formatInt(m.quantidade)}
-                      </td>
-                      <td>{m.destinatario_nome || '—'}</td>
-                      <td className="text-slate-600">{labelTipo(m.tipo_solicitante) || '—'}</td>
-                      <td className="text-slate-500 italic max-w-xs truncate" title={m.observacao || ''}>
-                        {m.observacao || '—'}
-                      </td>
-                      <td className="text-right">{formatBRL(m.custo_total)}</td>
-                      <td className="text-right pr-3">
-                        <button className="text-slate-400 hover:text-rose-600" title="Estornar"
-                                onClick={() => estornar(m)}>
-                          <Trash2 size={15} />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </>
+                {/* Info principal */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <span className="font-semibold text-slate-800 truncate">{m.brinde_nome}</span>
+                    <span className={`text-lg font-bold flex-shrink-0 ${saida ? 'text-rose-600' : 'text-emerald-600'}`}>
+                      {saida ? '−' : '+'}{formatInt(m.quantidade)}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-slate-500 mt-0.5 flex-wrap">
+                    <span className="flex items-center gap-1">
+                      <Calendar size={11}/> {formatDate(m.data)}
+                    </span>
+                    {m.destinatario_nome && (
+                      <>
+                        <span>·</span>
+                        <span className="truncate">
+                          {m.destinatario_nome}
+                          {m.tipo_solicitante ? ` (${labelTipo(m.tipo_solicitante)})` : ''}
+                        </span>
+                      </>
+                    )}
+                    {Number(m.custo_total) > 0 && (
+                      <>
+                        <span>·</span>
+                        <span>{formatBRL(m.custo_total)}</span>
+                      </>
+                    )}
+                  </div>
+                  {m.observacao && (
+                    <div className="text-xs text-slate-500 mt-1 flex items-center gap-1">
+                      <MessageSquare size={11} className="flex-shrink-0"/>
+                      <span className="italic truncate">{m.observacao}</span>
+                    </div>
+                  )}
+                </div>
+              </button>
+            );
+          })}
+        </div>
       )}
+
+      {/* Modal de detalhes */}
+      <Modal
+        open={!!detalheFor}
+        onClose={() => setDetalheFor(null)}
+        size="md"
+        title="Detalhes da movimentação"
+        footer={
+          <div className="w-full flex items-center gap-2 flex-nowrap">
+            <button
+              type="button"
+              className="btn-outline text-rose-700 border-rose-300 hover:bg-rose-50 text-xs px-2 py-1.5"
+              onClick={() => detalheFor && estornar(detalheFor)}
+            >
+              <Trash2 size={12}/> Estornar
+            </button>
+            <span className="flex-1"/>
+            <button
+              className="btn-primary text-xs px-3 py-1.5"
+              onClick={() => setDetalheFor(null)}
+            >
+              Fechar
+            </button>
+          </div>
+        }
+      >
+        {detalheFor && (
+          <div className="space-y-3">
+            {/* Header colorido com tipo e quantidade */}
+            <div className={`p-3 rounded-lg ${detalheFor.tipo === 'saida' ? 'bg-rose-50 border border-rose-100' : 'bg-emerald-50 border border-emerald-100'}`}>
+              <div className="flex items-center justify-between gap-2">
+                <span className={`badge ${detalheFor.tipo === 'saida' ? 'bg-rose-200 text-rose-800' : 'bg-emerald-200 text-emerald-800'}`}>
+                  {detalheFor.tipo === 'saida' ? (
+                    <><ArrowDownCircle size={12} className="mr-1"/>Saída</>
+                  ) : (
+                    <><ArrowUpCircle size={12} className="mr-1"/>Entrada</>
+                  )}
+                </span>
+                <span className={`text-2xl font-bold ${detalheFor.tipo === 'saida' ? 'text-rose-700' : 'text-emerald-700'}`}>
+                  {detalheFor.tipo === 'saida' ? '−' : '+'}{formatInt(detalheFor.quantidade)}
+                  <span className="text-sm font-normal ml-1 text-slate-600">
+                    {detalheFor.quantidade === 1 ? 'unidade' : 'unidades'}
+                  </span>
+                </span>
+              </div>
+            </div>
+
+            {/* Informações em grid */}
+            <div className="grid grid-cols-2 gap-x-3 gap-y-3">
+              <DetalheCampo
+                icon={Package}
+                label="Brinde"
+                value={detalheFor.brinde_nome}
+                colSpan={2}
+              />
+              <DetalheCampo
+                icon={Calendar}
+                label="Data"
+                value={formatDate(detalheFor.data)}
+              />
+              {Number(detalheFor.custo_total) > 0 && (
+                <DetalheCampo
+                  icon={DollarSign}
+                  label="Custo total"
+                  value={formatBRL(detalheFor.custo_total)}
+                />
+              )}
+              {Number(detalheFor.custo_unitario) > 0 && (
+                <DetalheCampo
+                  label="Custo unitário"
+                  value={formatBRL(detalheFor.custo_unitario)}
+                />
+              )}
+
+              {detalheFor.tipo === 'saida' && (
+                <>
+                  <DetalheCampo
+                    icon={Users}
+                    label="Destinatário"
+                    value={detalheFor.destinatario_nome || '—'}
+                    colSpan={2}
+                  />
+                  <DetalheCampo
+                    icon={Tag}
+                    label="Tipo solicitante"
+                    value={labelTipo(detalheFor.tipo_solicitante) || '—'}
+                    colSpan={2}
+                  />
+                </>
+              )}
+              {detalheFor.responsavel && (
+                <DetalheCampo
+                  label="Responsável"
+                  value={detalheFor.responsavel}
+                  colSpan={2}
+                />
+              )}
+            </div>
+
+            {/* Observação destacada */}
+            {detalheFor.observacao ? (
+              <div>
+                <div className="flex items-center gap-1.5 text-xs uppercase font-semibold text-slate-500 mb-1.5">
+                  <MessageSquare size={12}/> Observação
+                </div>
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-slate-800 whitespace-pre-wrap">
+                  {detalheFor.observacao}
+                </div>
+              </div>
+            ) : (
+              <div className="text-xs text-slate-400 italic">Sem observação registrada.</div>
+            )}
+          </div>
+        )}
+      </Modal>
+    </div>
+  );
+}
+
+function DetalheCampo({ icon: Icon, label, value, colSpan = 1 }) {
+  return (
+    <div className={colSpan === 2 ? 'col-span-2' : ''}>
+      <div className="text-[10px] uppercase font-semibold text-slate-500 mb-0.5 flex items-center gap-1">
+        {Icon && <Icon size={10}/>} {label}
+      </div>
+      <div className="font-medium text-slate-800 text-sm">{value}</div>
     </div>
   );
 }

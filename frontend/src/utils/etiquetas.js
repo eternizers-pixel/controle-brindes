@@ -52,17 +52,18 @@ function gerarHtmlEtiquetas(itens) {
     break-after: page;
   }
   .label:last-child { page-break-after: auto; break-after: auto; }
+  /* Descrição: ocupa tab esquerdo inteiro (0-29mm) com padding pequeno */
   .nome {
     position: absolute;
-    left: 10mm;
+    left: 1mm;
     top: 0;
-    width: 17mm;
+    width: 27mm;
     height: 10mm;
     display: flex;
     align-items: center;
     justify-content: flex-start;
     text-align: left;
-    font-size: 7pt;
+    font-size: 6pt;
     font-weight: 700;
     line-height: 1.05;
     word-wrap: break-word;
@@ -70,17 +71,18 @@ function gerarHtmlEtiquetas(itens) {
     hyphens: auto;
     overflow: hidden;
   }
+  /* Código: tab do meio, fonte maior e deslocado para a direita */
   .codigo {
     position: absolute;
-    left: 38mm;
+    left: 40mm;
     top: 0;
-    width: 18mm;
+    width: 17mm;
     height: 10mm;
     display: flex;
     align-items: center;
     justify-content: center;
     text-align: center;
-    font-size: 9pt;
+    font-size: 10pt;
     font-weight: 700;
     line-height: 1;
     white-space: nowrap;
@@ -94,12 +96,12 @@ function gerarHtmlEtiquetas(itens) {
 
 function ajustarFonteNoIframe(doc) {
   doc.querySelectorAll('.nome').forEach(function (el) {
-    let size = 7;
+    let size = 6;
     el.style.fontSize = size + 'pt';
     let maxIter = 12;
     while (
       maxIter-- > 0 &&
-      size > 4 &&
+      size > 3.5 &&
       (el.scrollHeight > el.clientHeight + 1 || el.scrollWidth > el.clientWidth + 1)
     ) {
       size -= 0.5;

@@ -1,13 +1,14 @@
 // Impressão de etiquetas térmicas 95×10mm tipo "hangtag" (dois tabs imprimíveis
-// com adesivo no meio).
+// à esquerda + adesivo à direita).
 //
 // Estrutura física da etiqueta:
-//   ┌──── 29mm ────┬──── 37mm (adesivo) ────┬──── 29mm ────┐
-//   │   DESCRIÇÃO  │       (vazio)          │    CÓDIGO    │
-//   └──────────────┴────────────────────────┴──────────────┘
+//   ┌──── 29mm ────┬──── 29mm ────┬──── 37mm (adesivo) ────┐
+//   │   DESCRIÇÃO  │    CÓDIGO    │       (vazio)          │
+//   └──────────────┴──────────────┴────────────────────────┘
 //
-// Descrição usa fonte menor e pode quebrar em até 3 linhas.
-// Código vai centralizado na ponta direita.
+// Descrição: tab esquerdo (0-29mm), alinhada à esquerda, fonte menor, pode quebrar linha.
+// Código: tab do meio (29-58mm), centralizado.
+// Adesivo: 58-95mm, sem impressão.
 //
 // Aceita 1 item (objeto) ou vários (array de objetos):
 //   { nome, codigo, quantidade }
@@ -65,17 +66,17 @@ export function imprimirEtiquetas(itens) {
     break-after: page;
   }
   .label:last-child { page-break-after: auto; break-after: auto; }
-  /* Tab esquerdo (descrição) — 29mm, com 3mm de padding interno */
+  /* Tab esquerdo (descrição) — 0 a 29mm, alinhada à esquerda */
   .nome {
     position: absolute;
-    left: 3mm;
+    left: 5mm;
     top: 0;
-    width: 26mm;
+    width: 22mm;
     height: 10mm;
     display: flex;
     align-items: center;
-    justify-content: center;
-    text-align: center;
+    justify-content: flex-start;
+    text-align: left;
     font-size: 6pt;
     font-weight: 700;
     line-height: 1.05;
@@ -84,12 +85,12 @@ export function imprimirEtiquetas(itens) {
     hyphens: auto;
     overflow: hidden;
   }
-  /* Tab direito (código) — 29mm, com 2.5mm de padding direito */
+  /* Tab do meio (código) — 29 a 58mm, centralizado */
   .codigo {
     position: absolute;
-    right: 2.5mm;
+    left: 29mm;
     top: 0;
-    width: 26.5mm;
+    width: 29mm;
     height: 10mm;
     display: flex;
     align-items: center;
@@ -104,11 +105,11 @@ export function imprimirEtiquetas(itens) {
   @media screen {
     body { padding: 1rem; background: #f1f5f9; }
     .label { background: white; border: 1px dashed #94a3b8; margin-bottom: 3mm; }
-    /* Marcação visual da área adesiva (só na tela, não impresso) */
+    /* Marcação visual da área adesiva (só na tela, não impresso) — 58 a 95mm */
     .label::before {
       content: '';
       position: absolute;
-      left: 29mm;
+      left: 58mm;
       top: 0;
       width: 37mm;
       height: 100%;

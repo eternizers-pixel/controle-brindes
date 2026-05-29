@@ -85,12 +85,12 @@ export function imprimirEtiquetas(itens) {
     hyphens: auto;
     overflow: hidden;
   }
-  /* Tab do meio (código) — 29 a 58mm, deslocado 5mm pra direita */
+  /* Tab do meio (código) — 29 a 58mm, deslocado mais à direita */
   .codigo {
     position: absolute;
-    left: 34mm;
+    left: 38mm;
     top: 0;
-    width: 24mm;
+    width: 18mm;
     height: 10mm;
     display: flex;
     align-items: center;
@@ -125,7 +125,27 @@ export function imprimirEtiquetas(itens) {
 <body>
 ${labels.join('')}
 <script>
-  window.onload = function () { setTimeout(function () { window.print(); }, 200); };
+  // Reduz a fonte das descrições muito longas até caber no tab esquerdo (17×10mm).
+  // Começa em 7pt e desce em passos de 0.5pt até parar de transbordar ou atingir 4pt.
+  function ajustarFonte() {
+    document.querySelectorAll('.nome').forEach(function (el) {
+      var size = 7;
+      el.style.fontSize = size + 'pt';
+      var maxIter = 12;
+      while (
+        maxIter-- > 0 &&
+        size > 4 &&
+        (el.scrollHeight > el.clientHeight + 1 || el.scrollWidth > el.clientWidth + 1)
+      ) {
+        size -= 0.5;
+        el.style.fontSize = size + 'pt';
+      }
+    });
+  }
+  window.onload = function () {
+    ajustarFonte();
+    setTimeout(function () { window.print(); }, 250);
+  };
 </script>
 </body>
 </html>`);

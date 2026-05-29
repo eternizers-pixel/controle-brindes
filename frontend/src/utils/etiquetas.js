@@ -1,8 +1,18 @@
-// Impressão de etiquetas térmicas 95×10mm.
+// Impressão de etiquetas térmicas 95×10mm tipo "hangtag" (dois tabs imprimíveis
+// com adesivo no meio).
+//
+// Estrutura física da etiqueta:
+//   ┌──── 29mm ────┬──── 37mm (adesivo) ────┬──── 29mm ────┐
+//   │   DESCRIÇÃO  │       (vazio)          │    CÓDIGO    │
+//   └──────────────┴────────────────────────┴──────────────┘
+//
+// Descrição usa fonte menor e pode quebrar em até 3 linhas.
+// Código vai centralizado na ponta direita.
+//
 // Aceita 1 item (objeto) ou vários (array de objetos):
 //   { nome, codigo, quantidade }
-// Cada quantidade vira N páginas com a mesma etiqueta. O espaço de 3mm entre
-// etiquetas é dado pelo gap físico do rolo (impressora térmica avança sozinha).
+// Cada quantidade vira N páginas. O gap de 3mm entre etiquetas no rolo
+// é dado pelo próprio espaçamento físico da impressora térmica.
 
 function escapeHtml(s) {
   return String(s ?? '').replace(/[&<>"']/g, (c) => ({
@@ -49,35 +59,65 @@ export function imprimirEtiquetas(itens) {
   .label {
     width: 95mm;
     height: 10mm;
-    padding: 0 2.5mm 0 3mm;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 3mm;
+    position: relative;
     overflow: hidden;
     page-break-after: always;
     break-after: page;
   }
   .label:last-child { page-break-after: auto; break-after: auto; }
+  /* Tab esquerdo (descrição) — 29mm, com 3mm de padding interno */
   .nome {
-    font-size: 9pt;
+    position: absolute;
+    left: 3mm;
+    top: 0;
+    width: 26mm;
+    height: 10mm;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-size: 6pt;
+    font-weight: 700;
+    line-height: 1.05;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    hyphens: auto;
+    overflow: hidden;
+  }
+  /* Tab direito (código) — 29mm, com 2.5mm de padding direito */
+  .codigo {
+    position: absolute;
+    right: 2.5mm;
+    top: 0;
+    width: 26.5mm;
+    height: 10mm;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-size: 8pt;
     font-weight: 700;
     line-height: 1;
-    flex: 1;
-    min-width: 0;
+    white-space: nowrap;
     overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-  }
-  .codigo {
-    font-size: 8pt;
-    font-weight: 600;
-    line-height: 1;
-    white-space: nowrap;
   }
   @media screen {
     body { padding: 1rem; background: #f1f5f9; }
     .label { background: white; border: 1px dashed #94a3b8; margin-bottom: 3mm; }
+    /* Marcação visual da área adesiva (só na tela, não impresso) */
+    .label::before {
+      content: '';
+      position: absolute;
+      left: 29mm;
+      top: 0;
+      width: 37mm;
+      height: 100%;
+      background: repeating-linear-gradient(
+        45deg, #fde68a, #fde68a 1mm, #fff7cc 1mm, #fff7cc 2mm
+      );
+      opacity: 0.6;
+      pointer-events: none;
+    }
   }
 </style>
 </head>

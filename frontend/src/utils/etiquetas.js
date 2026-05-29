@@ -93,19 +93,28 @@ function gerarHtmlEtiquetas(itens) {
 </html>`;
 }
 
+// Reduz a fonte se o conteúdo estiver transbordando o container.
+// Usado tanto na descrição (.nome) quanto no código (.codigo).
+function autoFit(el, startSize, minSize, step) {
+  let size = startSize;
+  el.style.fontSize = size + 'pt';
+  let maxIter = 30;
+  while (
+    maxIter-- > 0 &&
+    size > minSize &&
+    (el.scrollHeight > el.clientHeight + 1 || el.scrollWidth > el.clientWidth + 1)
+  ) {
+    size -= step;
+    el.style.fontSize = size + 'pt';
+  }
+}
+
 function ajustarFonteNoIframe(doc) {
   doc.querySelectorAll('.nome').forEach(function (el) {
-    let size = 5;
-    el.style.fontSize = size + 'pt';
-    let maxIter = 12;
-    while (
-      maxIter-- > 0 &&
-      size > 3 &&
-      (el.scrollHeight > el.clientHeight + 1 || el.scrollWidth > el.clientWidth + 1)
-    ) {
-      size -= 0.25;
-      el.style.fontSize = size + 'pt';
-    }
+    autoFit(el, 5, 3, 0.25);
+  });
+  doc.querySelectorAll('.codigo').forEach(function (el) {
+    autoFit(el, 10, 6, 0.25);
   });
 }
 

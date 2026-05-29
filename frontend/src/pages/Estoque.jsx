@@ -7,13 +7,19 @@ import { formatInt, FAIXAS_CUSTO, getFaixaCusto, getFaixaByKey } from '../utils/
 import SaidaModal from '../components/SaidaModal';
 
 const ORDENACOES = [
-  { value: 'az',         label: 'Nome (A-Z)' },
-  { value: 'za',         label: 'Nome (Z-A)' },
-  { value: 'preco_asc',  label: 'Menor preço' },
-  { value: 'preco_desc', label: 'Maior preço' },
+  { value: 'az',           label: 'Nome (A-Z)' },
+  { value: 'za',           label: 'Nome (Z-A)' },
+  { value: 'recentes',     label: 'Últimos cadastrados' },
+  { value: 'preco_asc',    label: 'Menor preço' },
+  { value: 'preco_desc',   label: 'Maior preço' },
   { value: 'estoque_desc', label: 'Maior estoque' },
   { value: 'estoque_asc',  label: 'Menor estoque' },
 ];
+
+function timestampDe(b) {
+  if (b.criado_em) return new Date(b.criado_em).getTime();
+  return Number(b.id || 0);
+}
 
 export default function Estoque() {
   const [brindes, setBrindes] = useState([]);
@@ -53,6 +59,9 @@ export default function Estoque() {
     switch (ordem) {
       case 'za':
         arr.sort((a, b) => (b.nome || '').localeCompare(a.nome || '', 'pt-BR'));
+        break;
+      case 'recentes':
+        arr.sort((a, b) => timestampDe(b) - timestampDe(a));
         break;
       case 'preco_asc':
         arr.sort((a, b) => Number(a.custo_unitario || 0) - Number(b.custo_unitario || 0));

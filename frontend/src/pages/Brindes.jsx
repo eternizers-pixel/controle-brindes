@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Search, Plus, Package2, X, Printer } from 'lucide-react';
+import { Search, Plus, Package2, X, Printer, Check } from 'lucide-react';
 import { getBrindes } from '../api/client';
 import { formatBRL, formatInt, FAIXAS_CUSTO, getFaixaCusto, getFaixaByKey } from '../utils/helpers';
 import BrindeFormModal from '../components/BrindeFormModal';
@@ -9,11 +9,18 @@ import EtiquetasMassaModal from '../components/EtiquetasMassaModal';
 const ORDENACOES = [
   { value: 'az',           label: 'Nome (A-Z)' },
   { value: 'za',           label: 'Nome (Z-A)' },
+  { value: 'recentes',     label: 'Últimos cadastrados' },
   { value: 'preco_asc',    label: 'Menor preço' },
   { value: 'preco_desc',   label: 'Maior preço' },
   { value: 'estoque_desc', label: 'Maior estoque' },
   { value: 'estoque_asc',  label: 'Menor estoque' },
 ];
+
+// Função pra ordenar do mais recente pro mais antigo (usa criado_em se tiver, senão id)
+function timestampDe(b) {
+  if (b.criado_em) return new Date(b.criado_em).getTime();
+  return Number(b.id || 0);
+}
 
 export default function Brindes() {
   const [brindes, setBrindes] = useState([]);
@@ -23,7 +30,18 @@ export default function Brindes() {
   const [novoOpen, setNovoOpen] = useState(false);
   const [etiquetasOpen, setEtiquetasOpen] = useState(false);
   const [ordem, setOrdem] = useState('az');
+  const [selecionados, setSelecionados] = useState(() => new Set());
   const [searchParams, setSearchParams] = useSearchParams();
+
+  const toggleSelecionado = (id) => {
+    setSelecionados((s) => {
+      const novo = new Set(s);
+      if (novo.has(id)) novo.delete(id);
+      else novo.add(id);
+      return novo;
+    });
+  };
+  const limparSelecao = () => setSelecionados(new Set());
 
   const faixaKey = searchParams.get('faixa') || '';
   const faixaSelecionada = faixaKey ? getFaixaByKey(faixaKey) : null;
@@ -53,6 +71,7 @@ export default function Brindes() {
     const arr = [...lista];
     switch (ordem) {
       case 'za':           arr.sort((a, b) => (b.nome || '').localeCompare(a.nome || '', 'pt-BR')); break;
+      case 'recentes':     arr.sort((a, b) => timestampDe(b) - timestampDe(a)); break;
       case 'preco_asc':    arr.sort((a, b) => Number(a.custo_unitario || 0) - Number(b.custo_unitario || 0)); break;
       case 'preco_desc':   arr.sort((a, b) => Number(b.custo_unitario || 0) - Number(a.custo_unitario || 0)); break;
       case 'estoque_asc':  arr.sort((a, b) => Number(a.quantidade_estoque || 0) - Number(b.quantidade_estoque || 0)); break;
@@ -62,6 +81,12 @@ export default function Brindes() {
     }
     return arr;
   }, [brindes, faixaSelecionada, ordem]);
+
+  // Brindes que entram no modal de etiquetas: selecionados (se houver) OU todos os filtrados
+  const brindesParaEtiquetas = useMemo(() => {
+    if (selecionados.size === 0) return brindesFiltrados;
+    return brindesFiltrados.filter((b) => selecionados.has(b.id));
+  }, [brindesFiltrados, selecionados]);
 
   const setFaixa = (key) => {
     if (!key) searchParams.delete('faixa'); else searchParams.set('faixa', key);
@@ -79,15 +104,38 @@ export default function Brindes() {
           <button
             className="btn-outline border-sky-300 text-sky-800 hover:bg-sky-50 flex-1 md:flex-none"
             onClick={() => setEtiquetasOpen(true)}
-            title="Imprimir etiquetas térmicas em massa"
+            title={selecionados.size > 0
+              ? `Imprimir etiquetas de ${selecionados.size} selecionado(s)`
+              : 'Imprimir etiquetas de todos os brindes mostrados'}
           >
             <Printer size={16} /> Etiquetas
+            {selecionados.size > 0 && (
+              <span className="ml-1 inline-flex items-center justify-center bg-sky-600 text-white text-[10px] font-bold rounded-full w-5 h-5">
+                {selecionados.size}
+              </span>
+            )}
           </button>
           <button className="btn-primary flex-1 md:flex-none" onClick={() => setNovoOpen(true)}>
             <Plus size={16} /> Novo brinde
           </button>
         </div>
       </header>
+
+      {/* Barra de seleção (aparece só quando tem itens selecionados) */}
+      {selecionados.size > 0 && (
+        <div className="card p-2.5 flex items-center justify-between bg-sky-50 border-sky-200 text-sm">
+          <span className="text-sky-900">
+            <strong>{selecionados.size}</strong> {selecionados.size === 1 ? 'brinde selecionado' : 'brindes selecionados'}
+          </span>
+          <button
+            type="button"
+            onClick={limparSelecao}
+            className="text-sky-700 hover:text-sky-900 flex items-center gap-1 text-xs"
+          >
+            <X size={12} /> Limpar seleção
+          </button>
+        </div>
+      )}
 
       <div className="card p-3 space-y-2">
         <div className="flex gap-2 flex-col sm:flex-row">
@@ -148,14 +196,17 @@ export default function Brindes() {
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
           {brindesFiltrados.map((b) => {
             const faixa = getFaixaCusto(b.custo_unitario);
+            const sel = selecionados.has(b.id);
             return (
-              <button
+              <div
                 key={b.id}
-                type="button"
+                role="button"
+                tabIndex={0}
                 onClick={() => setEditFor(b)}
-                className={`card overflow-hidden text-left flex flex-col transition-all group hover:shadow-soft active:scale-[.99] hover:border-brand-200 ${
-                  b.status === 'inativo' ? 'opacity-60' : ''
-                }`}
+                onKeyDown={(e) => { if (e.key === 'Enter') setEditFor(b); }}
+                className={`card overflow-hidden text-left flex flex-col transition-all group cursor-pointer hover:shadow-soft active:scale-[.99] ${
+                  sel ? 'ring-2 ring-sky-500 border-sky-300' : 'hover:border-brand-200'
+                } ${b.status === 'inativo' ? 'opacity-60' : ''}`}
               >
                 {/* Foto grande - destaque principal */}
                 <div className="relative aspect-square bg-slate-100">
@@ -166,8 +217,21 @@ export default function Brindes() {
                       <Package2 size={56} />
                     </div>
                   )}
+                  {/* Checkbox de seleção - canto superior esquerdo */}
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); toggleSelecionado(b.id); }}
+                    className={`absolute top-2 left-2 w-6 h-6 rounded-md border-2 grid place-items-center transition-colors shadow-sm ${
+                      sel
+                        ? 'bg-sky-600 border-sky-600 text-white'
+                        : 'bg-white/90 border-slate-300 text-transparent hover:border-sky-400'
+                    }`}
+                    title={sel ? 'Desmarcar' : 'Selecionar para imprimir'}
+                  >
+                    <Check size={14} strokeWidth={3} />
+                  </button>
                   {b.status === 'inativo' && (
-                    <div className="absolute top-2 left-2">
+                    <div className="absolute bottom-2 left-2">
                       <span className="badge bg-slate-200 text-slate-700">inativo</span>
                     </div>
                   )}
@@ -199,7 +263,7 @@ export default function Brindes() {
                     </div>
                   )}
                 </div>
-              </button>
+              </div>
             );
           })}
         </div>
@@ -214,7 +278,7 @@ export default function Brindes() {
 
       <EtiquetasMassaModal
         open={etiquetasOpen}
-        brindes={brindesFiltrados}
+        brindes={brindesParaEtiquetas}
         onClose={() => setEtiquetasOpen(false)}
       />
     </div>

@@ -1,9 +1,82 @@
 import { useState, useEffect } from 'react';
-import { Power, PowerOff, Trash2, Plus, Search, Loader2, Package2 } from 'lucide-react';
+import { Power, PowerOff, Trash2, Plus, Search, Loader2, Package2, Printer } from 'lucide-react';
 import Modal from './Modal';
 import { criarBrinde, atualizarBrinde, excluirBrinde, buscarNoXBZ } from '../api/client';
 import EntradaModal from './EntradaModal';
 import { useToast } from './Toast';
+
+// Abre uma janela com etiquetas térmicas 95×10mm e dispara o print.
+// padding 3mm esquerdo / 2.5mm direito; cada etiqueta = 1 página (impressora
+// térmica usa o espaçamento físico de 3mm do rolo entre uma e outra)
+function imprimirEtiquetas({ nome, codigo, quantidade }) {
+  const w = window.open('', '_blank', 'width=600,height=400');
+  if (!w) {
+    alert('Habilite popups deste site para imprimir etiquetas.');
+    return;
+  }
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  })[c]);
+  const labelHTML = `
+    <div class="label">
+      <span class="nome">${esc(nome)}</span>
+      <span class="codigo">${esc(codigo || '')}</span>
+    </div>
+  `;
+  const todas = Array(Math.max(1, Number(quantidade) || 1)).fill(labelHTML).join('');
+  w.document.write(`<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<title>Etiquetas — ${esc(nome)}</title>
+<style>
+  @page { size: 95mm 10mm; margin: 0; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: white; font-family: -apple-system, 'Inter', Arial, sans-serif; }
+  .label {
+    width: 95mm;
+    height: 10mm;
+    padding: 0 2.5mm 0 3mm;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 3mm;
+    overflow: hidden;
+    page-break-after: always;
+    break-after: page;
+  }
+  .label:last-child { page-break-after: auto; break-after: auto; }
+  .nome {
+    font-size: 9pt;
+    font-weight: 700;
+    line-height: 1;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+  .codigo {
+    font-size: 8pt;
+    font-weight: 600;
+    line-height: 1;
+    white-space: nowrap;
+  }
+  @media screen {
+    body { padding: 1rem; background: #f1f5f9; }
+    .label { background: white; border: 1px dashed #94a3b8; margin-bottom: 3mm; }
+  }
+</style>
+</head>
+<body>
+${todas}
+<script>
+  window.onload = function () { setTimeout(function () { window.print(); }, 200); };
+</script>
+</body>
+</html>`);
+  w.document.close();
+}
 
 export default function BrindeFormModal({ open, brinde, onClose, onSaved }) {
   const toast = useToast();
@@ -23,6 +96,9 @@ export default function BrindeFormModal({ open, brinde, onClose, onSaved }) {
   const [xbzBuscando, setXbzBuscando] = useState(false);
   const [xbzResultados, setXbzResultados] = useState(null); // null = nunca buscou; [] = sem resultado
   const [xbzErro, setXbzErro] = useState('');
+
+  // Quantidade de etiquetas a imprimir
+  const [qtdEtiquetas, setQtdEtiquetas] = useState(1);
 
   useEffect(() => {
     if (!open) return;
@@ -303,6 +379,50 @@ export default function BrindeFormModal({ open, brinde, onClose, onSaved }) {
                   <Plus size={14}/> Adicionar
                 </button>
               </div>
+            </div>
+          )}
+
+          {/* Imprimir etiquetas térmicas — só na edição */}
+          {isEdit && (
+            <div className="mt-2 p-3 bg-sky-50 rounded-lg border border-sky-200">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="text-xs flex-1 min-w-[150px]">
+                  <div className="font-semibold text-sky-800 flex items-center gap-1">
+                    <Printer size={14}/> Etiquetas térmicas
+                  </div>
+                  <div className="text-sky-700">95×10mm, nome + código</div>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <input
+                    type="number"
+                    min="1"
+                    max="999"
+                    className="input w-16 text-center text-sm py-1"
+                    value={qtdEtiquetas}
+                    onChange={(e) => setQtdEtiquetas(Math.max(1, Number(e.target.value) || 1))}
+                    title="Quantidade de etiquetas"
+                  />
+                  <button
+                    type="button"
+                    className="btn-outline border-sky-300 text-sky-800 hover:bg-sky-100 text-xs px-3 py-2"
+                    onClick={() => imprimirEtiquetas({
+                      nome: form.nome,
+                      codigo: form.codigo,
+                      quantidade: qtdEtiquetas,
+                    })}
+                    disabled={!form.nome.trim()}
+                  >
+                    <Printer size={14}/> Imprimir
+                  </button>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="text-[11px] text-sky-700 hover:text-sky-900 mt-1"
+                onClick={() => setQtdEtiquetas(Math.max(1, Number(form.quantidade_estoque) || 1))}
+              >
+                Usar quantidade do estoque ({form.quantidade_estoque})
+              </button>
             </div>
           )}
 

@@ -4,79 +4,7 @@ import Modal from './Modal';
 import { criarBrinde, atualizarBrinde, excluirBrinde, buscarNoXBZ } from '../api/client';
 import EntradaModal from './EntradaModal';
 import { useToast } from './Toast';
-
-// Abre uma janela com etiquetas térmicas 95×10mm e dispara o print.
-// padding 3mm esquerdo / 2.5mm direito; cada etiqueta = 1 página (impressora
-// térmica usa o espaçamento físico de 3mm do rolo entre uma e outra)
-function imprimirEtiquetas({ nome, codigo, quantidade }) {
-  const w = window.open('', '_blank', 'width=600,height=400');
-  if (!w) {
-    alert('Habilite popups deste site para imprimir etiquetas.');
-    return;
-  }
-  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
-  })[c]);
-  const labelHTML = `
-    <div class="label">
-      <span class="nome">${esc(nome)}</span>
-      <span class="codigo">${esc(codigo || '')}</span>
-    </div>
-  `;
-  const todas = Array(Math.max(1, Number(quantidade) || 1)).fill(labelHTML).join('');
-  w.document.write(`<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-<meta charset="UTF-8" />
-<title>Etiquetas — ${esc(nome)}</title>
-<style>
-  @page { size: 95mm 10mm; margin: 0; }
-  * { box-sizing: border-box; }
-  html, body { margin: 0; padding: 0; background: white; font-family: -apple-system, 'Inter', Arial, sans-serif; }
-  .label {
-    width: 95mm;
-    height: 10mm;
-    padding: 0 2.5mm 0 3mm;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 3mm;
-    overflow: hidden;
-    page-break-after: always;
-    break-after: page;
-  }
-  .label:last-child { page-break-after: auto; break-after: auto; }
-  .nome {
-    font-size: 9pt;
-    font-weight: 700;
-    line-height: 1;
-    flex: 1;
-    min-width: 0;
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-  }
-  .codigo {
-    font-size: 8pt;
-    font-weight: 600;
-    line-height: 1;
-    white-space: nowrap;
-  }
-  @media screen {
-    body { padding: 1rem; background: #f1f5f9; }
-    .label { background: white; border: 1px dashed #94a3b8; margin-bottom: 3mm; }
-  }
-</style>
-</head>
-<body>
-${todas}
-<script>
-  window.onload = function () { setTimeout(function () { window.print(); }, 200); };
-</script>
-</body>
-</html>`);
-  w.document.close();
-}
+import { imprimirEtiquetas } from '../utils/etiquetas';
 
 export default function BrindeFormModal({ open, brinde, onClose, onSaved }) {
   const toast = useToast();
@@ -405,11 +333,11 @@ export default function BrindeFormModal({ open, brinde, onClose, onSaved }) {
                   <button
                     type="button"
                     className="btn-outline border-sky-300 text-sky-800 hover:bg-sky-100 text-xs px-3 py-2"
-                    onClick={() => imprimirEtiquetas({
+                    onClick={() => imprimirEtiquetas([{
                       nome: form.nome,
                       codigo: form.codigo,
                       quantidade: qtdEtiquetas,
-                    })}
+                    }])}
                     disabled={!form.nome.trim()}
                   >
                     <Printer size={14}/> Imprimir

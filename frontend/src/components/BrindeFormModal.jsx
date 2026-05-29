@@ -167,25 +167,41 @@ export default function BrindeFormModal({ open, brinde, onClose, onSaved }) {
         size="md"
         title={isEdit ? 'Editar brinde' : 'Novo brinde'}
         footer={
-          <>
+          <div className="w-full flex items-center gap-1.5 flex-nowrap">
             {isEdit && (
-              <div className="w-full sm:w-auto sm:mr-auto flex flex-wrap gap-2">
-                <button type="button" className="btn-outline text-rose-700 border-rose-300 hover:bg-rose-50"
-                        onClick={excluir} disabled={loading} title="Excluir definitivamente">
-                  <Trash2 size={14}/> Excluir
+              <>
+                <button
+                  type="button"
+                  className="btn-outline text-rose-700 border-rose-300 hover:bg-rose-50 text-xs px-2 py-1.5 whitespace-nowrap"
+                  onClick={excluir} disabled={loading} title="Excluir definitivamente"
+                >
+                  <Trash2 size={12}/> Excluir
                 </button>
-                <button type="button"
-                        className={`btn ${form.status === 'ativo' ? 'btn-outline text-amber-700 border-amber-300 hover:bg-amber-50' : 'btn-outline text-emerald-600 border-emerald-200 hover:bg-emerald-50'}`}
-                        onClick={toggleStatus} disabled={loading}>
-                  {form.status === 'ativo' ? <><PowerOff size={14}/> Inativar</> : <><Power size={14}/> Reativar</>}
+                <button
+                  type="button"
+                  className={`btn text-xs px-2 py-1.5 whitespace-nowrap ${form.status === 'ativo' ? 'btn-outline text-amber-700 border-amber-300 hover:bg-amber-50' : 'btn-outline text-emerald-600 border-emerald-200 hover:bg-emerald-50'}`}
+                  onClick={toggleStatus} disabled={loading}
+                >
+                  {form.status === 'ativo' ? <><PowerOff size={12}/> Inativar</> : <><Power size={12}/> Reativar</>}
                 </button>
-              </div>
+              </>
             )}
-            <button className="btn-ghost" onClick={onClose} disabled={loading}>Cancelar</button>
-            <button className="btn-primary" onClick={() => submit()} disabled={loading}>
+            <span className="flex-1" />
+            <button
+              className="btn-ghost text-xs px-2 py-1.5 whitespace-nowrap"
+              onClick={onClose}
+              disabled={loading}
+            >
+              Cancelar
+            </button>
+            <button
+              className="btn-primary text-xs px-3 py-1.5 whitespace-nowrap"
+              onClick={() => submit()}
+              disabled={loading}
+            >
               {loading ? 'Salvando…' : isEdit ? 'Salvar' : 'Cadastrar'}
             </button>
-          </>
+          </div>
         }
       >
         <div className="space-y-3">

@@ -52,23 +52,22 @@ function gerarHtmlEtiquetas(itens) {
     break-after: page;
   }
   .label:last-child { page-break-after: auto; break-after: auto; }
-  /* Descrição: usa largura quase total do tab esquerdo (5-28mm = 23mm) */
+  /* Descrição: margem esquerda segura de 8mm + fonte menor pra caber mais por linha */
   .nome {
     position: absolute;
-    left: 5mm;
+    left: 8mm;
     top: 0;
-    width: 23mm;
+    width: 20mm;
     height: 10mm;
     display: flex;
     align-items: center;
     justify-content: flex-start;
     text-align: left;
-    font-size: 6pt;
+    font-size: 5pt;
     font-weight: 700;
     line-height: 1.05;
     word-wrap: break-word;
     overflow-wrap: break-word;
-    /* sem hyphens:auto pra evitar quebra no meio das palavras */
     overflow: hidden;
   }
   /* Código: caixa larga o suficiente pra 10pt sem cortar bordas */
@@ -96,15 +95,15 @@ function gerarHtmlEtiquetas(itens) {
 
 function ajustarFonteNoIframe(doc) {
   doc.querySelectorAll('.nome').forEach(function (el) {
-    let size = 6;
+    let size = 5;
     el.style.fontSize = size + 'pt';
     let maxIter = 12;
     while (
       maxIter-- > 0 &&
-      size > 3.5 &&
+      size > 3 &&
       (el.scrollHeight > el.clientHeight + 1 || el.scrollWidth > el.clientWidth + 1)
     ) {
-      size -= 0.5;
+      size -= 0.25;
       el.style.fontSize = size + 'pt';
     }
   });

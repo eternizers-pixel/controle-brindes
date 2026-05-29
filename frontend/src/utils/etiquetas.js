@@ -52,12 +52,12 @@ function gerarHtmlEtiquetas(itens) {
     break-after: page;
   }
   .label:last-child { page-break-after: auto; break-after: auto; }
-  /* Descrição: tab esquerdo com 3mm de margem segura pra não cortar a 1ª letra */
+  /* Descrição: shift 5mm pra direita pra não cortar a 1ª letra */
   .nome {
     position: absolute;
-    left: 3mm;
+    left: 8mm;
     top: 0;
-    width: 24mm;
+    width: 20mm;
     height: 10mm;
     display: flex;
     align-items: center;

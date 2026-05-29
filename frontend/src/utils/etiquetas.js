@@ -52,12 +52,12 @@ function gerarHtmlEtiquetas(itens) {
     break-after: page;
   }
   .label:last-child { page-break-after: auto; break-after: auto; }
-  /* Descrição: shift 5mm pra direita pra não cortar a 1ª letra */
+  /* Descrição: usa largura quase total do tab esquerdo (5-28mm = 23mm) */
   .nome {
     position: absolute;
-    left: 8mm;
+    left: 5mm;
     top: 0;
-    width: 20mm;
+    width: 23mm;
     height: 10mm;
     display: flex;
     align-items: center;
@@ -68,7 +68,7 @@ function gerarHtmlEtiquetas(itens) {
     line-height: 1.05;
     word-wrap: break-word;
     overflow-wrap: break-word;
-    hyphens: auto;
+    /* sem hyphens:auto pra evitar quebra no meio das palavras */
     overflow: hidden;
   }
   /* Código: caixa larga o suficiente pra 10pt sem cortar bordas */

@@ -52,12 +52,12 @@ function gerarHtmlEtiquetas(itens) {
     break-after: page;
   }
   .label:last-child { page-break-after: auto; break-after: auto; }
-  /* Descrição: ocupa tab esquerdo inteiro (0-29mm) com padding pequeno */
+  /* Descrição: tab esquerdo com 3mm de margem segura pra não cortar a 1ª letra */
   .nome {
     position: absolute;
-    left: 1mm;
+    left: 3mm;
     top: 0;
-    width: 27mm;
+    width: 24mm;
     height: 10mm;
     display: flex;
     align-items: center;
@@ -71,12 +71,12 @@ function gerarHtmlEtiquetas(itens) {
     hyphens: auto;
     overflow: hidden;
   }
-  /* Código: tab do meio, fonte maior e deslocado para a direita */
+  /* Código: caixa larga o suficiente pra 10pt sem cortar bordas */
   .codigo {
     position: absolute;
-    left: 40mm;
+    left: 38mm;
     top: 0;
-    width: 17mm;
+    width: 20mm;
     height: 10mm;
     display: flex;
     align-items: center;

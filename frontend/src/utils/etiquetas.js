@@ -66,18 +66,18 @@ export function imprimirEtiquetas(itens) {
     break-after: page;
   }
   .label:last-child { page-break-after: auto; break-after: auto; }
-  /* Tab esquerdo (descrição) — 0 a 29mm, alinhada à esquerda */
+  /* Tab esquerdo (descrição) — 0 a 29mm, alinhada à esquerda, deslocada 5mm pra direita */
   .nome {
     position: absolute;
-    left: 5mm;
+    left: 10mm;
     top: 0;
-    width: 22mm;
+    width: 17mm;
     height: 10mm;
     display: flex;
     align-items: center;
     justify-content: flex-start;
     text-align: left;
-    font-size: 6pt;
+    font-size: 7pt;
     font-weight: 700;
     line-height: 1.05;
     word-wrap: break-word;
@@ -85,18 +85,18 @@ export function imprimirEtiquetas(itens) {
     hyphens: auto;
     overflow: hidden;
   }
-  /* Tab do meio (código) — 29 a 58mm, centralizado */
+  /* Tab do meio (código) — 29 a 58mm, deslocado 5mm pra direita */
   .codigo {
     position: absolute;
-    left: 29mm;
+    left: 34mm;
     top: 0;
-    width: 29mm;
+    width: 24mm;
     height: 10mm;
     display: flex;
     align-items: center;
     justify-content: center;
     text-align: center;
-    font-size: 8pt;
+    font-size: 9pt;
     font-weight: 700;
     line-height: 1;
     white-space: nowrap;

@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Search, Plus, Package2, X } from 'lucide-react';
+import { Search, Plus, Package2, X, Printer } from 'lucide-react';
 import { getBrindes } from '../api/client';
 import { formatBRL, formatInt, FAIXAS_CUSTO, getFaixaCusto, getFaixaByKey } from '../utils/helpers';
 import BrindeFormModal from '../components/BrindeFormModal';
+import EtiquetasMassaModal from '../components/EtiquetasMassaModal';
 
 const ORDENACOES = [
   { value: 'az',           label: 'Nome (A-Z)' },
@@ -20,6 +21,7 @@ export default function Brindes() {
   const [loading, setLoading] = useState(true);
   const [editFor, setEditFor] = useState(null);
   const [novoOpen, setNovoOpen] = useState(false);
+  const [etiquetasOpen, setEtiquetasOpen] = useState(false);
   const [ordem, setOrdem] = useState('az');
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -73,9 +75,18 @@ export default function Brindes() {
           <h1 className="text-xl sm:text-2xl font-bold text-slate-800">Cadastro de brindes</h1>
           <p className="text-slate-500 text-sm">Toque em um brinde para editar</p>
         </div>
-        <button className="btn-primary w-full md:w-auto" onClick={() => setNovoOpen(true)}>
-          <Plus size={16} /> Novo brinde
-        </button>
+        <div className="flex gap-2 w-full md:w-auto">
+          <button
+            className="btn-outline border-sky-300 text-sky-800 hover:bg-sky-50 flex-1 md:flex-none"
+            onClick={() => setEtiquetasOpen(true)}
+            title="Imprimir etiquetas térmicas em massa"
+          >
+            <Printer size={16} /> Etiquetas
+          </button>
+          <button className="btn-primary flex-1 md:flex-none" onClick={() => setNovoOpen(true)}>
+            <Plus size={16} /> Novo brinde
+          </button>
+        </div>
       </header>
 
       <div className="card p-3 space-y-2">
@@ -199,6 +210,12 @@ export default function Brindes() {
         brinde={editFor}
         onClose={() => { setEditFor(null); setNovoOpen(false); }}
         onSaved={() => load({ silent: true })}
+      />
+
+      <EtiquetasMassaModal
+        open={etiquetasOpen}
+        brindes={brindesFiltrados}
+        onClose={() => setEtiquetasOpen(false)}
       />
     </div>
   );

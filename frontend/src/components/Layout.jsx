@@ -15,8 +15,8 @@ const links = [
   { to: '/pesquisa-xbz',  label: 'Pesquisa XBZ',        mobile: 'XBZ',       icon: Search },
 ];
 
-// 5 mais usados na nav inferior do mobile
-const mobileLinks = links.filter((l) => ['/', '/entregar', '/brindes', '/patrocinios', '/dashboard'].includes(l.to));
+// 6 mais usados na nav inferior do mobile
+const mobileLinks = links.filter((l) => ['/', '/entregar', '/brindes', '/parametros', '/patrocinios', '/dashboard'].includes(l.to));
 
 export default function Layout() {
   return (
@@ -67,7 +67,7 @@ export default function Layout() {
       </main>
 
       {/* Bottom nav mobile */}
-      <nav className="md:hidden fixed bottom-0 inset-x-0 bg-white border-t border-slate-200 grid grid-cols-5 z-30">
+      <nav className="md:hidden fixed bottom-0 inset-x-0 bg-white border-t border-slate-200 grid grid-cols-6 z-30">
         {mobileLinks.map(({ to, mobile, icon: Icon }) => (
           <NavLink
             key={to}

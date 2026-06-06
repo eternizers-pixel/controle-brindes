@@ -64,7 +64,8 @@ export default function Patrocinios() {
     setFiltroRecorrencia('');
   };
 
-  const totais = calcularInvestimentos(lista);
+  // Totais reagem aos filtros — refletem só os patrocínios mostrados na lista.
+  const totais = useMemo(() => calcularInvestimentos(listaFiltrada), [listaFiltrada]);
 
   // Formata 'YYYY-MM' como 'maio de 2026' pra mensagem
   const formatarMes = (yyyymm) => {
@@ -87,30 +88,39 @@ export default function Patrocinios() {
       </header>
 
       <div className="grid gap-3 sm:grid-cols-3">
-        <div className="card p-4 flex items-center gap-3">
+        <div className={`card p-4 flex items-center gap-3 ${algumFiltroAtivo ? 'ring-2 ring-indigo-200' : ''}`}>
           <div className="w-10 h-10 rounded-lg bg-violet-100 text-violet-600 grid place-items-center">
             <HandCoins size={20} />
           </div>
           <div>
-            <div className="text-xs text-slate-500 uppercase">Mensal recorrente</div>
+            <div className="text-xs text-slate-500 uppercase">
+              Mensal recorrente
+              {algumFiltroAtivo && <span className="ml-1 text-indigo-600 normal-case font-medium">(filtrado)</span>}
+            </div>
             <div className="text-lg font-bold text-slate-800">{formatBRL(totais.mensal)}</div>
           </div>
         </div>
-        <div className="card p-4 flex items-center gap-3">
+        <div className={`card p-4 flex items-center gap-3 ${algumFiltroAtivo ? 'ring-2 ring-indigo-200' : ''}`}>
           <div className="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-600 grid place-items-center">
             <Calendar size={20} />
           </div>
           <div>
-            <div className="text-xs text-slate-500 uppercase">Investido no ano</div>
+            <div className="text-xs text-slate-500 uppercase">
+              Investido no ano
+              {algumFiltroAtivo && <span className="ml-1 text-indigo-600 normal-case font-medium">(filtrado)</span>}
+            </div>
             <div className="text-lg font-bold text-emerald-700">{formatBRL(totais.totalAno)}</div>
           </div>
         </div>
-        <div className="card p-4 flex items-center gap-3">
+        <div className={`card p-4 flex items-center gap-3 ${algumFiltroAtivo ? 'ring-2 ring-indigo-200' : ''}`}>
           <div className="w-10 h-10 rounded-lg bg-amber-100 text-amber-600 grid place-items-center">
             <LineChart size={20} />
           </div>
           <div>
-            <div className="text-xs text-slate-500 uppercase">Média mensal</div>
+            <div className="text-xs text-slate-500 uppercase">
+              Média mensal
+              {algumFiltroAtivo && <span className="ml-1 text-indigo-600 normal-case font-medium">(filtrado)</span>}
+            </div>
             <div className="text-lg font-bold text-slate-800">{formatBRL(totais.mediaMensal)}</div>
           </div>
         </div>

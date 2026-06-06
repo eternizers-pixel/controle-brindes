@@ -4,6 +4,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   Search, Package2, Settings2, Plus, X, Save, ArrowLeft, Check, Wrench, Edit2,
+  Camera, Image as ImageIcon,
 } from 'lucide-react';
 import {
   getBrindes, atualizarBrinde,
@@ -13,6 +14,7 @@ import { useToast } from '../components/Toast';
 import ProdutoGravacaoModal from '../components/ProdutoGravacaoModal';
 
 const PARAM_VAZIO = () => ({
+  titulo: '',
   tipo: 'laser',
   angulo: '',
   hachura: '',
@@ -20,6 +22,7 @@ const PARAM_VAZIO = () => ({
   potencia: '',
   repeticoes: '',
   observacao: '',
+  foto: null,
 });
 
 export default function Parametros() {
@@ -351,35 +354,46 @@ export default function Parametros() {
                   {params.map((p, idx) => (
                     <div key={idx} className="card p-3 sm:p-4 space-y-2 border-l-4 border-l-indigo-400">
                       <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 grid place-items-center text-xs font-bold">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 grid place-items-center text-xs font-bold flex-shrink-0">
                             {idx + 1}
                           </div>
-                          <span className="text-xs font-semibold uppercase text-slate-600">
-                            Parâmetro {idx + 1}
+                          <span className="text-xs font-semibold uppercase text-slate-600 truncate">
+                            {p.titulo?.trim() ? p.titulo : `Parâmetro ${idx + 1}`}
                           </span>
                         </div>
                         <button
                           type="button"
                           onClick={() => removeParam(idx)}
-                          className="text-rose-600 hover:bg-rose-50 rounded-full p-1"
+                          className="text-rose-600 hover:bg-rose-50 rounded-full p-1 flex-shrink-0"
                           title="Remover este parâmetro"
                         >
                           <X size={16}/>
                         </button>
                       </div>
 
-                      {/* Linha 1: TIPO */}
-                      <div className="w-[140px]">
-                        <label className="label">Tipo</label>
-                        <select
-                          className="input"
-                          value={p.tipo || 'laser'}
-                          onChange={(e) => setParam(idx, 'tipo', e.target.value)}
-                        >
-                          <option value="laser">Laser</option>
-                          <option value="CO2">CO2</option>
-                        </select>
+                      {/* Linha 1: TÍTULO | TIPO */}
+                      <div className="grid grid-cols-2 gap-2 max-w-[300px]">
+                        <div>
+                          <label className="label">Título</label>
+                          <input
+                            className="input"
+                            value={p.titulo || ''}
+                            onChange={(e) => setParam(idx, 'titulo', e.target.value)}
+                            placeholder="Logo grande, tampa…"
+                          />
+                        </div>
+                        <div>
+                          <label className="label">Tipo</label>
+                          <select
+                            className="input"
+                            value={p.tipo || 'laser'}
+                            onChange={(e) => setParam(idx, 'tipo', e.target.value)}
+                          >
+                            <option value="laser">Laser</option>
+                            <option value="CO2">CO2</option>
+                          </select>
+                        </div>
                       </div>
 
                       {/* Linha 2: ANGULO | HACHURA */}
@@ -444,6 +458,72 @@ export default function Parametros() {
                           onChange={(e) => setParam(idx, 'observacao', e.target.value)}
                           placeholder="Tamanho da gravação, qual logo, posição, detalhes…"
                         />
+                      </div>
+
+                      {/* Linha 5: FOTO DA GRAVAÇÃO */}
+                      <div>
+                        <label className="label">Foto da gravação</label>
+                        <div className="flex items-start gap-2">
+                          {p.foto ? (
+                            <div className="relative group flex-shrink-0">
+                              <a href={p.foto} target="_blank" rel="noreferrer" title="Abrir em tamanho real">
+                                <img
+                                  src={p.foto}
+                                  alt=""
+                                  className="w-28 h-28 sm:w-32 sm:h-32 rounded-lg object-cover border border-slate-200 hover:border-indigo-400 transition-colors"
+                                />
+                              </a>
+                              <button
+                                type="button"
+                                onClick={() => setParam(idx, 'foto', null)}
+                                className="absolute -top-1.5 -right-1.5 bg-rose-600 text-white rounded-full p-1 shadow-sm hover:bg-rose-700"
+                                title="Remover foto"
+                              >
+                                <X size={12}/>
+                              </button>
+                            </div>
+                          ) : (
+                            <label className="cursor-pointer w-28 h-28 sm:w-32 sm:h-32 rounded-lg border-2 border-dashed border-slate-300 hover:border-indigo-400 hover:bg-indigo-50 transition-colors grid place-items-center text-slate-400 hover:text-indigo-600 flex-shrink-0">
+                              <div className="flex flex-col items-center gap-1">
+                                <Camera size={22}/>
+                                <span className="text-[10px] text-center px-2 leading-tight">Adicionar foto</span>
+                              </div>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={(e) => {
+                                  const f = e.target.files?.[0];
+                                  if (!f) return;
+                                  const reader = new FileReader();
+                                  reader.onload = () => setParam(idx, 'foto', reader.result);
+                                  reader.readAsDataURL(f);
+                                }}
+                              />
+                            </label>
+                          )}
+                          <div className="text-[11px] text-slate-500 pt-1">
+                            {p.foto ? (
+                              <label className="cursor-pointer text-indigo-600 hover:text-indigo-800 underline">
+                                Trocar foto
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={(e) => {
+                                    const f = e.target.files?.[0];
+                                    if (!f) return;
+                                    const reader = new FileReader();
+                                    reader.onload = () => setParam(idx, 'foto', reader.result);
+                                    reader.readAsDataURL(f);
+                                  }}
+                                />
+                              </label>
+                            ) : (
+                              <span className="italic">Mostra o produto gravado</span>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   ))}

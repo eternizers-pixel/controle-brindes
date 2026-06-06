@@ -1,10 +1,19 @@
-// Página de Parâmetros de gravação
-// Mostra tanto BRINDES (com seus parâmetros) quanto PRODUTOS_GRAVACAO
-// (itens que não são brindes mas tem parâmetros salvos).
+// Página de Parâmetros de gravação.
+// Cada "parâmetro" representa uma PEÇA (Logo frente, tampa, etc.) e tem:
+//   - título (opcional)
+//   - foto da peça gravada (opcional)
+//   - observações (opcional)
+//   - PASSOS: cada passo é uma configuração de máquina (Laser/CO2, ângulo, etc.)
+//     A mesma peça pode ter vários passos (ex: 1ª passagem + 2ª passagem).
+//
+// Cada card tem dois modos:
+//   - Visualização (compacto, tabela lado-a-lado dos passos)
+//   - Edição (formulário com os campos)
+// Clicar em Salvar (global) persiste e colapsa todos pra visualização.
 import { useEffect, useMemo, useState } from 'react';
 import {
   Search, Package2, Settings2, Plus, X, Save, ArrowLeft, Check, Wrench, Edit2,
-  Camera, Image as ImageIcon,
+  Camera,
 } from 'lucide-react';
 import {
   getBrindes, atualizarBrinde,
@@ -16,29 +25,73 @@ import { compressImageFile, compressImageDataURL, dataUrlBytes } from '../utils/
 
 const FOTO_GRANDE_THRESHOLD = 400 * 1024; // 400KB
 
-const PARAM_VAZIO = () => ({
-  titulo: '',
+const PASSO_VAZIO = () => ({
   tipo: 'laser',
   angulo: '',
   hachura: '',
   velocidade: '',
   potencia: '',
   repeticoes: '',
+});
+
+const PARAM_VAZIO = () => ({
+  titulo: '',
   observacao: '',
   foto: null,
+  passos: [PASSO_VAZIO()],
 });
+
+// Compatibilidade com a estrutura antiga (sem `passos`, fields flat).
+function normalizarParam(p) {
+  if (!p || typeof p !== 'object') return PARAM_VAZIO();
+  if (Array.isArray(p.passos)) {
+    // Já no formato novo
+    return {
+      titulo: p.titulo || '',
+      observacao: p.observacao || '',
+      foto: p.foto || null,
+      passos: p.passos.length > 0 ? p.passos.map((pa) => ({
+        tipo: pa.tipo || 'laser',
+        angulo: pa.angulo || '',
+        hachura: pa.hachura || '',
+        velocidade: pa.velocidade || '',
+        potencia: pa.potencia || '',
+        repeticoes: pa.repeticoes || '',
+      })) : [PASSO_VAZIO()],
+    };
+  }
+  // Formato antigo: campos flat → vira 1 passo
+  return {
+    titulo: p.titulo || '',
+    observacao: p.observacao || '',
+    foto: p.foto || null,
+    passos: [{
+      tipo: p.tipo || 'laser',
+      angulo: p.angulo || '',
+      hachura: p.hachura || '',
+      velocidade: p.velocidade || '',
+      potencia: p.potencia || '',
+      repeticoes: p.repeticoes || '',
+    }],
+  };
+}
+
+function normalizarLista(lista) {
+  return Array.isArray(lista) ? lista.map(normalizarParam) : [];
+}
 
 export default function Parametros() {
   const toast = useToast();
-  const [itens, setItens] = useState([]); // brindes + produtos_gravacao mesclados
+  const [itens, setItens] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busca, setBusca] = useState('');
-  const [filtroTipo, setFiltroTipo] = useState('todos'); // 'todos' | 'brinde' | 'gravacao'
+  const [filtroTipo, setFiltroTipo] = useState('todos');
   const [selecionado, setSelecionado] = useState(null);
   const [params, setParams] = useState([]);
+  const [editingSet, setEditingSet] = useState(() => new Set());
   const [dirty, setDirty] = useState(false);
   const [salvando, setSalvando] = useState(false);
-  const [modalProduto, setModalProduto] = useState(null); // null | 'novo' | <produto_obj>
+  const [modalProduto, setModalProduto] = useState(null);
 
   const load = async ({ silent = false } = {}) => {
     if (!silent) setLoading(true);
@@ -72,13 +125,12 @@ export default function Parametros() {
       if (!window.confirm('Você tem alterações não salvas. Trocar de item mesmo assim?')) return;
     }
     setSelecionado(b);
-    const iniciais = Array.isArray(b.parametros_gravacao) ? [...b.parametros_gravacao] : [];
+    const iniciais = normalizarLista(b.parametros_gravacao);
     setParams(iniciais);
+    setEditingSet(new Set());
     setDirty(false);
 
-    // Auto-otimização: se algum parâmetro tem foto grande salva no banco,
-    // comprime em background e salva a versão menor.
-    // Evita que o próximo save normal estoure o statement_timeout do Supabase.
+    // Auto-otimização das fotos grandes salvas
     const temGrande = iniciais.some((p) => p.foto && dataUrlBytes(p.foto) > FOTO_GRANDE_THRESHOLD);
     if (!temGrande) return;
     try {
@@ -95,7 +147,6 @@ export default function Parametros() {
       }));
       const fn = b._tipo === 'gravacao' ? atualizarProdutoGravacao : atualizarBrinde;
       await fn(b.id, { parametros_gravacao: otimizados });
-      // Atualiza estado local sem marcar dirty (foi automático)
       setParams(otimizados);
       setItens((lista) =>
         lista.map((x) => (x.id === b.id && x._tipo === b._tipo)
@@ -105,27 +156,73 @@ export default function Parametros() {
       setSelecionado((s) => ({ ...s, parametros_gravacao: otimizados }));
       toast.success('Fotos antigas otimizadas pra carregar mais rápido.');
     } catch (e) {
-      // Falha silenciosa — o usuário pode tentar salvar manualmente
       console.warn('Falha ao otimizar fotos antigas:', e);
     }
   };
 
-  const setParam = (idx, campo, valor) => {
+  // === Operações de parâmetro (card) ===
+  const setParamField = (idx, campo, valor) => {
     const arr = [...params];
     arr[idx] = { ...arr[idx], [campo]: valor };
     setParams(arr);
     setDirty(true);
   };
   const addParam = () => {
+    const novoIdx = params.length;
     setParams([...params, PARAM_VAZIO()]);
     setDirty(true);
+    setEditingSet((s) => new Set([...s, novoIdx]));
   };
   const removeParam = (idx) => {
+    if (!window.confirm('Remover este parâmetro inteiro?')) return;
     const arr = [...params];
     arr.splice(idx, 1);
     setParams(arr);
     setDirty(true);
+    setEditingSet((s) => {
+      const n = new Set();
+      s.forEach((i) => {
+        if (i < idx) n.add(i);
+        else if (i > idx) n.add(i - 1);
+      });
+      return n;
+    });
   };
+
+  // === Operações de passo (dentro de um card) ===
+  const setPassoField = (paramIdx, passoIdx, campo, valor) => {
+    const arr = [...params];
+    const passos = [...arr[paramIdx].passos];
+    passos[passoIdx] = { ...passos[passoIdx], [campo]: valor };
+    arr[paramIdx] = { ...arr[paramIdx], passos };
+    setParams(arr);
+    setDirty(true);
+  };
+  const addPasso = (paramIdx) => {
+    const arr = [...params];
+    arr[paramIdx] = { ...arr[paramIdx], passos: [...arr[paramIdx].passos, PASSO_VAZIO()] };
+    setParams(arr);
+    setDirty(true);
+  };
+  const removePasso = (paramIdx, passoIdx) => {
+    const arr = [...params];
+    const passos = [...arr[paramIdx].passos];
+    passos.splice(passoIdx, 1);
+    arr[paramIdx] = { ...arr[paramIdx], passos: passos.length ? passos : [PASSO_VAZIO()] };
+    setParams(arr);
+    setDirty(true);
+  };
+
+  // === Edit/View toggle ===
+  const toggleEdit = (idx) => {
+    setEditingSet((s) => {
+      const n = new Set(s);
+      if (n.has(idx)) n.delete(idx);
+      else n.add(idx);
+      return n;
+    });
+  };
+  const isEditing = (idx) => editingSet.has(idx);
 
   const salvar = async () => {
     if (!selecionado) return;
@@ -135,7 +232,7 @@ export default function Parametros() {
       await fn(selecionado.id, { parametros_gravacao: params });
       toast.success(`Parâmetros de "${selecionado.nome}" salvos!`);
       setDirty(false);
-      // Atualiza a versão local
+      setEditingSet(new Set()); // colapsa tudo pra visualização
       setItens((lista) =>
         lista.map((b) => (b.id === selecionado.id && b._tipo === selecionado._tipo)
           ? { ...b, parametros_gravacao: params }
@@ -149,7 +246,6 @@ export default function Parametros() {
     }
   };
 
-  // Quando o modal salva um novo produto_gravacao
   const aoSalvarProduto = (produto) => {
     if (!produto) { load({ silent: true }); return; }
     setItens((lista) => {
@@ -157,10 +253,10 @@ export default function Parametros() {
       const novo = { ...produto, _tipo: 'gravacao' };
       return [...semEle, novo].sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR'));
     });
-    // Se acabou de criar ou editar o item selecionado, atualiza foco
     const novoItem = { ...produto, _tipo: 'gravacao' };
     setSelecionado(novoItem);
-    setParams(Array.isArray(produto.parametros_gravacao) ? [...produto.parametros_gravacao] : []);
+    setParams(normalizarLista(produto.parametros_gravacao));
+    setEditingSet(new Set());
     setDirty(false);
   };
 
@@ -169,6 +265,7 @@ export default function Parametros() {
     if (selecionado?.id === id && selecionado?._tipo === 'gravacao') {
       setSelecionado(null);
       setParams([]);
+      setEditingSet(new Set());
       setDirty(false);
     }
   };
@@ -194,7 +291,7 @@ export default function Parametros() {
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-        {/* Lista de itens (esquerda) */}
+        {/* Lista (esquerda) */}
         <div className={`md:col-span-5 lg:col-span-5 ${selecionado ? 'hidden md:block' : ''}`}>
           <div className="card p-3 sticky top-4">
             <div className="relative mb-2">
@@ -207,7 +304,6 @@ export default function Parametros() {
               />
             </div>
 
-            {/* Filtro por tipo */}
             <div className="flex gap-1 mb-2 text-xs">
               {[
                 { key: 'todos', label: 'Todos' },
@@ -284,7 +380,7 @@ export default function Parametros() {
           </div>
         </div>
 
-        {/* Painel de detalhes + editor (direita) */}
+        {/* Painel direito */}
         <div className={`md:col-span-7 lg:col-span-7 ${!selecionado ? 'hidden md:block' : ''}`}>
           {!selecionado ? (
             <div className="card p-10 text-center text-slate-500">
@@ -294,14 +390,14 @@ export default function Parametros() {
             </div>
           ) : (
             <div className="space-y-3">
-              {/* Header sticky: foto + nome (sempre visível) */}
+              {/* Header sticky */}
               <div className="sticky top-4 z-10 bg-slate-50 pt-1 pb-2">
                 <div className="card p-3 flex items-start gap-3 shadow-sm">
                   <button
                     type="button"
                     onClick={() => setSelecionado(null)}
                     className="md:hidden btn-ghost p-1 flex-shrink-0"
-                    title="Voltar para a lista"
+                    title="Voltar"
                   >
                     <ArrowLeft size={18}/>
                   </button>
@@ -352,7 +448,6 @@ export default function Parametros() {
                         type="button"
                         className="btn-outline border-slate-300 text-slate-700 hover:bg-slate-50 text-xs px-3 py-1.5"
                         onClick={() => setModalProduto(selecionado)}
-                        title="Editar nome/foto/código do produto"
                       >
                         <Edit2 size={12}/> Editar
                       </button>
@@ -361,7 +456,7 @@ export default function Parametros() {
                 </div>
               </div>
 
-              {/* Lista de parâmetros (editável) */}
+              {/* Lista de cards (parâmetros) */}
               {params.length === 0 ? (
                 <div className="card p-10 text-center text-slate-500">
                   <Settings2 size={32} className="mx-auto mb-2 text-slate-300"/>
@@ -389,188 +484,21 @@ export default function Parametros() {
                   </datalist>
 
                   {params.map((p, idx) => (
-                    <div key={idx} className="card p-3 sm:p-4 space-y-2 border-l-4 border-l-indigo-400">
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <div className="w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 grid place-items-center text-xs font-bold flex-shrink-0">
-                            {idx + 1}
-                          </div>
-                          <span className="text-xs font-semibold uppercase text-slate-600 truncate">
-                            {p.titulo?.trim() ? p.titulo : `Parâmetro ${idx + 1}`}
-                          </span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => removeParam(idx)}
-                          className="text-rose-600 hover:bg-rose-50 rounded-full p-1 flex-shrink-0"
-                          title="Remover este parâmetro"
-                        >
-                          <X size={16}/>
-                        </button>
-                      </div>
-
-                      {/* Linha 1: TÍTULO | TIPO */}
-                      <div className="grid grid-cols-2 gap-2 max-w-[300px]">
-                        <div>
-                          <label className="label">Título</label>
-                          <input
-                            className="input"
-                            value={p.titulo || ''}
-                            onChange={(e) => setParam(idx, 'titulo', e.target.value)}
-                            placeholder="Logo grande, tampa…"
-                          />
-                        </div>
-                        <div>
-                          <label className="label">Tipo</label>
-                          <select
-                            className="input"
-                            value={p.tipo || 'laser'}
-                            onChange={(e) => setParam(idx, 'tipo', e.target.value)}
-                          >
-                            <option value="laser">Laser</option>
-                            <option value="CO2">CO2</option>
-                          </select>
-                        </div>
-                      </div>
-
-                      {/* Linha 2: ANGULO | HACHURA */}
-                      <div className="grid grid-cols-2 gap-2 max-w-[300px]">
-                        <div>
-                          <label className="label">Ângulo</label>
-                          <input
-                            list="parametros-angulos"
-                            className="input"
-                            value={p.angulo || ''}
-                            onChange={(e) => setParam(idx, 'angulo', e.target.value)}
-                            placeholder="0°, 45°…"
-                          />
-                        </div>
-                        <div>
-                          <label className="label">Hachura</label>
-                          <input
-                            list="parametros-hachuras"
-                            className="input"
-                            value={p.hachura || ''}
-                            onChange={(e) => setParam(idx, 'hachura', e.target.value)}
-                            placeholder="0.02, 0.04…"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Linha 3: VELOCIDADE | POTÊNCIA | REPETIÇÕES */}
-                      <div className="grid grid-cols-3 gap-2 max-w-[450px]">
-                        <div>
-                          <label className="label">Velocidade</label>
-                          <input
-                            className="input"
-                            value={p.velocidade || ''}
-                            onChange={(e) => setParam(idx, 'velocidade', e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <label className="label">Potência</label>
-                          <input
-                            className="input"
-                            value={p.potencia || ''}
-                            onChange={(e) => setParam(idx, 'potencia', e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <label className="label">Repetições</label>
-                          <input
-                            className="input"
-                            value={p.repeticoes || ''}
-                            onChange={(e) => setParam(idx, 'repeticoes', e.target.value)}
-                          />
-                        </div>
-                      </div>
-
-                      {/* Linha 4: OBSERVAÇÕES (largura completa pra texto longo) */}
-                      <div>
-                        <label className="label">Observações</label>
-                        <textarea
-                          className="input"
-                          rows={2}
-                          value={p.observacao || ''}
-                          onChange={(e) => setParam(idx, 'observacao', e.target.value)}
-                          placeholder="Tamanho da gravação, qual logo, posição, detalhes…"
-                        />
-                      </div>
-
-                      {/* Linha 5: FOTO DA GRAVAÇÃO */}
-                      <div>
-                        <label className="label">Foto da gravação</label>
-                        <div className="flex items-start gap-2">
-                          {p.foto ? (
-                            <div className="relative group flex-shrink-0">
-                              <a href={p.foto} target="_blank" rel="noreferrer" title="Abrir em tamanho real">
-                                <img
-                                  src={p.foto}
-                                  alt=""
-                                  className="w-28 h-28 sm:w-32 sm:h-32 rounded-lg object-cover border border-slate-200 hover:border-indigo-400 transition-colors"
-                                />
-                              </a>
-                              <button
-                                type="button"
-                                onClick={() => setParam(idx, 'foto', null)}
-                                className="absolute -top-1.5 -right-1.5 bg-rose-600 text-white rounded-full p-1 shadow-sm hover:bg-rose-700"
-                                title="Remover foto"
-                              >
-                                <X size={12}/>
-                              </button>
-                            </div>
-                          ) : (
-                            <label className="cursor-pointer w-28 h-28 sm:w-32 sm:h-32 rounded-lg border-2 border-dashed border-slate-300 hover:border-indigo-400 hover:bg-indigo-50 transition-colors grid place-items-center text-slate-400 hover:text-indigo-600 flex-shrink-0">
-                              <div className="flex flex-col items-center gap-1">
-                                <Camera size={22}/>
-                                <span className="text-[10px] text-center px-2 leading-tight">Adicionar foto</span>
-                              </div>
-                              <input
-                                type="file"
-                                accept="image/*"
-                                className="hidden"
-                                onChange={async (e) => {
-                                  const f = e.target.files?.[0];
-                                  if (!f) return;
-                                  try {
-                                    const dataUrl = await compressImageFile(f);
-                                    setParam(idx, 'foto', dataUrl);
-                                  } catch (err) {
-                                    toast.error(err.message || 'Erro ao processar a imagem.');
-                                  } finally {
-                                    e.target.value = '';
-                                  }
-                                }}
-                              />
-                            </label>
-                          )}
-                          <div className="text-[11px] text-slate-500 pt-1">
-                            {p.foto ? (
-                              <label className="cursor-pointer text-indigo-600 hover:text-indigo-800 underline">
-                                Trocar foto
-                                <input
-                                  type="file"
-                                  accept="image/*"
-                                  className="hidden"
-                                  onChange={(e) => {
-                                    const f = e.target.files?.[0];
-                                    if (!f) return;
-                                    const reader = new FileReader();
-                                    reader.onload = () => setParam(idx, 'foto', reader.result);
-                                    reader.readAsDataURL(f);
-                                  }}
-                                />
-                              </label>
-                            ) : (
-                              <span className="italic">Mostra o produto gravado</span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+                    <ParametroCard
+                      key={idx}
+                      idx={idx}
+                      param={p}
+                      editing={isEditing(idx)}
+                      onToggleEdit={() => toggleEdit(idx)}
+                      onSetField={(campo, valor) => setParamField(idx, campo, valor)}
+                      onRemove={() => removeParam(idx)}
+                      onSetPasso={(pIdx, campo, valor) => setPassoField(idx, pIdx, campo, valor)}
+                      onAddPasso={() => addPasso(idx)}
+                      onRemovePasso={(pIdx) => removePasso(idx, pIdx)}
+                    />
                   ))}
 
-                  {/* Botão Salvar grande no rodapé */}
+                  {/* Footer salvar */}
                   <div className="card p-3 flex items-center justify-between bg-slate-50">
                     <div className="text-xs text-slate-600">
                       {dirty ? (
@@ -595,7 +523,6 @@ export default function Parametros() {
         </div>
       </div>
 
-      {/* Modal de novo/editar produto de gravação */}
       <ProdutoGravacaoModal
         open={!!modalProduto}
         produto={modalProduto === 'novo' ? null : modalProduto}
@@ -604,5 +531,360 @@ export default function Parametros() {
         onDeleted={aoExcluirProduto}
       />
     </div>
+  );
+}
+
+// ===========================================================================
+// Card de um parâmetro (peça). Alterna entre view e edit mode.
+// ===========================================================================
+function ParametroCard({
+  idx, param, editing, onToggleEdit, onSetField, onRemove,
+  onSetPasso, onAddPasso, onRemovePasso,
+}) {
+  const titulo = param.titulo?.trim() || `Parâmetro ${idx + 1}`;
+
+  return (
+    <div className="card p-3 sm:p-4 space-y-3 border-l-4 border-l-indigo-400">
+      {/* Header do card */}
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 grid place-items-center text-xs font-bold flex-shrink-0">
+            {idx + 1}
+          </div>
+          {editing ? (
+            <input
+              className="input flex-1 max-w-sm text-sm"
+              placeholder="Título (ex: LOGO FRENTE) — opcional"
+              value={param.titulo || ''}
+              onChange={(e) => onSetField('titulo', e.target.value)}
+            />
+          ) : (
+            <span className="font-semibold text-slate-800 truncate">{titulo}</span>
+          )}
+        </div>
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <button
+            type="button"
+            onClick={onToggleEdit}
+            className={`text-xs px-2 py-1 rounded-md flex items-center gap-1 ${
+              editing
+                ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                : 'border border-slate-300 text-slate-700 hover:bg-slate-50'
+            }`}
+            title={editing ? 'Recolher (sem salvar — use o botão Salvar lá em cima)' : 'Editar este parâmetro'}
+          >
+            {editing ? <><Check size={12}/> Pronto</> : <><Edit2 size={12}/> Editar</>}
+          </button>
+          <button
+            type="button"
+            onClick={onRemove}
+            className="text-rose-600 hover:bg-rose-50 rounded-full p-1"
+            title="Remover este parâmetro inteiro"
+          >
+            <X size={16}/>
+          </button>
+        </div>
+      </div>
+
+      {editing ? (
+        <ParametroEditMode
+          param={param}
+          onSetField={onSetField}
+          onSetPasso={onSetPasso}
+          onAddPasso={onAddPasso}
+          onRemovePasso={onRemovePasso}
+        />
+      ) : (
+        <ParametroViewMode param={param} />
+      )}
+    </div>
+  );
+}
+
+// ===========================================================================
+// VIEW MODE — exibição compacta. Múltiplos passos viram colunas lado a lado.
+// ===========================================================================
+function ParametroViewMode({ param }) {
+  const passos = param.passos || [];
+  const temAlgo = passos.some((p) =>
+    p.tipo || p.angulo || p.hachura || p.velocidade || p.potencia || p.repeticoes
+  );
+
+  return (
+    <div className="flex flex-col sm:flex-row gap-3">
+      {/* Foto à esquerda */}
+      {param.foto && (
+        <a href={param.foto} target="_blank" rel="noreferrer" className="flex-shrink-0">
+          <img
+            src={param.foto}
+            alt=""
+            className="w-20 h-20 sm:w-24 sm:h-24 rounded-lg object-cover border border-slate-200 hover:border-indigo-400 transition-colors"
+          />
+        </a>
+      )}
+
+      <div className="flex-1 min-w-0 space-y-2">
+        {/* Passos lado a lado em tabela */}
+        {temAlgo ? (
+          <div className="overflow-x-auto">
+            <table className="text-xs w-full">
+              <thead>
+                <tr className="text-indigo-700 font-semibold border-b border-slate-200">
+                  <th className="text-left pb-1 pr-3 font-medium text-slate-500 w-24"></th>
+                  {passos.map((_, i) => (
+                    <th key={i} className="text-left pb-1 pr-3 font-semibold">Passo {i + 1}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="text-slate-700">
+                <LinhaTabela label="Tipo"       passos={passos} campo="tipo"       capitalize />
+                <LinhaTabela label="Ângulo"     passos={passos} campo="angulo" />
+                <LinhaTabela label="Hachura"    passos={passos} campo="hachura" />
+                <LinhaTabela label="Velocidade" passos={passos} campo="velocidade" />
+                <LinhaTabela label="Potência"   passos={passos} campo="potencia" />
+                <LinhaTabela label="Repetições" passos={passos} campo="repeticoes" />
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="text-xs text-slate-400 italic">Nenhum passo configurado.</div>
+        )}
+
+        {/* Observação */}
+        {param.observacao?.trim() && (
+          <div className="text-xs text-slate-600 italic flex gap-1.5 items-start pt-1 border-t border-slate-100">
+            <span className="text-slate-400 flex-shrink-0">📝</span>
+            <span className="whitespace-pre-wrap">{param.observacao}</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function LinhaTabela({ label, passos, campo, capitalize }) {
+  return (
+    <tr className="border-b border-slate-50 last:border-0">
+      <td className="text-slate-500 pr-3 py-1 align-top">{label}</td>
+      {passos.map((p, i) => {
+        const v = p[campo];
+        return (
+          <td key={i} className="pr-3 py-1 align-top">
+            {v ? (
+              <span className={capitalize ? 'capitalize font-medium' : 'font-medium'}>{v}</span>
+            ) : (
+              <span className="text-slate-300">—</span>
+            )}
+          </td>
+        );
+      })}
+    </tr>
+  );
+}
+
+// ===========================================================================
+// EDIT MODE — formulário. Múltiplos passos viram blocos lado a lado.
+// ===========================================================================
+function ParametroEditMode({ param, onSetField, onSetPasso, onAddPasso, onRemovePasso }) {
+  return (
+    <div className="space-y-3">
+      {/* Passos lado a lado */}
+      <div className="flex flex-wrap gap-2 items-start">
+        {param.passos.map((passo, pIdx) => (
+          <div
+            key={pIdx}
+            className="border border-indigo-200 bg-indigo-50/40 rounded-lg p-2.5 space-y-2 relative min-w-[240px] flex-1"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[10px] uppercase font-bold text-indigo-700">
+                Passo {pIdx + 1}
+              </span>
+              {param.passos.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => onRemovePasso(pIdx)}
+                  className="text-rose-600 hover:bg-rose-50 rounded-full p-0.5"
+                  title="Remover este passo"
+                >
+                  <X size={12}/>
+                </button>
+              )}
+            </div>
+
+            {/* Tipo */}
+            <div>
+              <label className="label">Tipo</label>
+              <select
+                className="input"
+                value={passo.tipo || 'laser'}
+                onChange={(e) => onSetPasso(pIdx, 'tipo', e.target.value)}
+              >
+                <option value="laser">Laser</option>
+                <option value="CO2">CO2</option>
+              </select>
+            </div>
+
+            {/* Ângulo + Hachura */}
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="label">Ângulo</label>
+                <input
+                  list="parametros-angulos"
+                  className="input"
+                  value={passo.angulo || ''}
+                  onChange={(e) => onSetPasso(pIdx, 'angulo', e.target.value)}
+                  placeholder="0°, 45°…"
+                />
+              </div>
+              <div>
+                <label className="label">Hachura</label>
+                <input
+                  list="parametros-hachuras"
+                  className="input"
+                  value={passo.hachura || ''}
+                  onChange={(e) => onSetPasso(pIdx, 'hachura', e.target.value)}
+                  placeholder="0.02, 0.04…"
+                />
+              </div>
+            </div>
+
+            {/* Velocidade + Potência + Repetições */}
+            <div className="grid grid-cols-3 gap-2">
+              <div>
+                <label className="label">Vel.</label>
+                <input
+                  className="input"
+                  value={passo.velocidade || ''}
+                  onChange={(e) => onSetPasso(pIdx, 'velocidade', e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="label">Pot.</label>
+                <input
+                  className="input"
+                  value={passo.potencia || ''}
+                  onChange={(e) => onSetPasso(pIdx, 'potencia', e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="label">Rep.</label>
+                <input
+                  className="input"
+                  value={passo.repeticoes || ''}
+                  onChange={(e) => onSetPasso(pIdx, 'repeticoes', e.target.value)}
+                />
+              </div>
+            </div>
+          </div>
+        ))}
+
+        {/* Botão + Passo */}
+        <button
+          type="button"
+          onClick={onAddPasso}
+          className="border-2 border-dashed border-indigo-300 hover:border-indigo-500 hover:bg-indigo-50 text-indigo-600 rounded-lg p-3 min-w-[80px] flex flex-col items-center justify-center gap-1 text-xs self-stretch transition-colors"
+          title="Adicionar mais um passo de gravação"
+        >
+          <Plus size={16}/>
+          <span>Passo</span>
+        </button>
+      </div>
+
+      {/* Observações */}
+      <div>
+        <label className="label">Observações</label>
+        <textarea
+          className="input"
+          rows={2}
+          value={param.observacao || ''}
+          onChange={(e) => onSetField('observacao', e.target.value)}
+          placeholder="Tamanho da gravação, qual logo, posição, detalhes…"
+        />
+      </div>
+
+      {/* Foto */}
+      <div>
+        <label className="label">Foto da gravação</label>
+        <div className="flex items-start gap-2">
+          {param.foto ? (
+            <div className="relative group flex-shrink-0">
+              <a href={param.foto} target="_blank" rel="noreferrer">
+                <img
+                  src={param.foto}
+                  alt=""
+                  className="w-24 h-24 sm:w-28 sm:h-28 rounded-lg object-cover border border-slate-200 hover:border-indigo-400 transition-colors"
+                />
+              </a>
+              <button
+                type="button"
+                onClick={() => onSetField('foto', null)}
+                className="absolute -top-1.5 -right-1.5 bg-rose-600 text-white rounded-full p-1 shadow-sm hover:bg-rose-700"
+                title="Remover foto"
+              >
+                <X size={12}/>
+              </button>
+            </div>
+          ) : (
+            <FotoUploader onUpload={(d) => onSetField('foto', d)} />
+          )}
+          {param.foto && (
+            <FotoTrocar onUpload={(d) => onSetField('foto', d)} />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FotoUploader({ onUpload }) {
+  return (
+    <label className="cursor-pointer w-24 h-24 sm:w-28 sm:h-28 rounded-lg border-2 border-dashed border-slate-300 hover:border-indigo-400 hover:bg-indigo-50 transition-colors grid place-items-center text-slate-400 hover:text-indigo-600 flex-shrink-0">
+      <div className="flex flex-col items-center gap-1">
+        <Camera size={20}/>
+        <span className="text-[10px] text-center px-2 leading-tight">Adicionar foto</span>
+      </div>
+      <input
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={async (e) => {
+          const f = e.target.files?.[0];
+          if (!f) return;
+          try {
+            const dataUrl = await compressImageFile(f);
+            onUpload(dataUrl);
+          } catch (err) {
+            alert(err.message || 'Erro ao processar a imagem.');
+          } finally {
+            e.target.value = '';
+          }
+        }}
+      />
+    </label>
+  );
+}
+
+function FotoTrocar({ onUpload }) {
+  return (
+    <label className="cursor-pointer text-[11px] text-indigo-600 hover:text-indigo-800 underline pt-1">
+      Trocar foto
+      <input
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={async (e) => {
+          const f = e.target.files?.[0];
+          if (!f) return;
+          try {
+            const dataUrl = await compressImageFile(f);
+            onUpload(dataUrl);
+          } catch (err) {
+            alert(err.message || 'Erro ao processar a imagem.');
+          } finally {
+            e.target.value = '';
+          }
+        }}
+      />
+    </label>
   );
 }

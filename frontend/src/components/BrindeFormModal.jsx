@@ -1,10 +1,21 @@
 import { useState, useEffect } from 'react';
-import { Power, PowerOff, Trash2, Plus, Search, Loader2, Package2, Printer } from 'lucide-react';
+import {
+  Power, PowerOff, Trash2, Plus, Minus, Search, Loader2, Package2, Settings2, X,
+} from 'lucide-react';
 import Modal from './Modal';
 import { criarBrinde, atualizarBrinde, excluirBrinde, buscarNoXBZ } from '../api/client';
-import EntradaModal from './EntradaModal';
+import AjusteEstoqueModal from './AjusteEstoqueModal';
 import { useToast } from './Toast';
-import { imprimirEtiquetas } from '../utils/etiquetas';
+
+// Parâmetro de gravação vazio (base para "Adicionar parâmetro")
+const PARAM_VAZIO = () => ({
+  tipo: 'laser',
+  angulo: '',
+  hachura: '',
+  velocidade: '',
+  potencia: '',
+  repeticoes: '',
+});
 
 export default function BrindeFormModal({ open, brinde, onClose, onSaved }) {
   const toast = useToast();
@@ -12,21 +23,19 @@ export default function BrindeFormModal({ open, brinde, onClose, onSaved }) {
   const [form, setForm] = useState({
     nome: '', codigo: '', descricao: '',
     quantidade_estoque: 0, custo_unitario: 0, status: 'ativo',
+    parametros_gravacao: [],
   });
   const [foto, setFoto] = useState(null);
   const [preview, setPreview] = useState(null);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState('');
-  const [showEntrada, setShowEntrada] = useState(false);
+  const [ajusteDirecao, setAjusteDirecao] = useState(null); // 'entrada' | 'saida' | null
 
   // Busca XBZ
   const [xbzBusca, setXbzBusca] = useState('');
   const [xbzBuscando, setXbzBuscando] = useState(false);
-  const [xbzResultados, setXbzResultados] = useState(null); // null = nunca buscou; [] = sem resultado
+  const [xbzResultados, setXbzResultados] = useState(null);
   const [xbzErro, setXbzErro] = useState('');
-
-  // Quantidade de etiquetas a imprimir
-  const [qtdEtiquetas, setQtdEtiquetas] = useState(1);
 
   useEffect(() => {
     if (!open) return;
@@ -38,18 +47,20 @@ export default function BrindeFormModal({ open, brinde, onClose, onSaved }) {
         quantidade_estoque: brinde.quantidade_estoque || 0,
         custo_unitario: brinde.custo_unitario || 0,
         status: brinde.status || 'ativo',
+        parametros_gravacao: Array.isArray(brinde.parametros_gravacao) ? brinde.parametros_gravacao : [],
       });
       setPreview(brinde.foto || null);
     } else {
       setForm({
         nome: '', codigo: '', descricao: '',
         quantidade_estoque: 0, custo_unitario: 0, status: 'ativo',
+        parametros_gravacao: [],
       });
       setPreview(null);
     }
     setFoto(null);
     setErr('');
-    setShowEntrada(false);
+    setAjusteDirecao(null);
     setXbzBusca('');
     setXbzBuscando(false);
     setXbzResultados(null);
@@ -82,10 +93,9 @@ export default function BrindeFormModal({ open, brinde, onClose, onSaved }) {
       custo_unitario: p.preco,
     }));
     if (p.foto) {
-      setFoto(p.foto); // armazena URL direta da CDN do XBZ
+      setFoto(p.foto);
       setPreview(p.foto);
     }
-    // limpa painel pra desafogar a UI
     setXbzResultados(null);
     setXbzBusca('');
     toast.success(`Dados preenchidos com "${p.nome}"`);
@@ -103,6 +113,28 @@ export default function BrindeFormModal({ open, brinde, onClose, onSaved }) {
     reader.readAsDataURL(f);
   };
 
+  // === Parâmetros de gravação ===
+  const setParam = (idx, campo, valor) => {
+    setForm((f) => {
+      const arr = [...(f.parametros_gravacao || [])];
+      arr[idx] = { ...arr[idx], [campo]: valor };
+      return { ...f, parametros_gravacao: arr };
+    });
+  };
+  const addParam = () => {
+    setForm((f) => ({
+      ...f,
+      parametros_gravacao: [...(f.parametros_gravacao || []), PARAM_VAZIO()],
+    }));
+  };
+  const removeParam = (idx) => {
+    setForm((f) => {
+      const arr = [...(f.parametros_gravacao || [])];
+      arr.splice(idx, 1);
+      return { ...f, parametros_gravacao: arr };
+    });
+  };
+
   const submit = async (overrideStatus) => {
     setErr('');
     if (!form.nome.trim()) return setErr('Informe o nome do brinde.');
@@ -117,6 +149,7 @@ export default function BrindeFormModal({ open, brinde, onClose, onSaved }) {
         custo_unitario: Number(form.custo_unitario) || 0,
         status: overrideStatus || form.status,
         foto: foto !== null ? foto : (isEdit ? undefined : preview),
+        parametros_gravacao: form.parametros_gravacao || [],
       };
       if (!isEdit) payload.quantidade_estoque = Number(form.quantidade_estoque) || 0;
 
@@ -162,7 +195,7 @@ export default function BrindeFormModal({ open, brinde, onClose, onSaved }) {
   return (
     <>
       <Modal
-        open={open && !showEntrada}
+        open={open && !ajusteDirecao}
         onClose={onClose}
         size="md"
         title={isEdit ? 'Editar brinde' : 'Novo brinde'}
@@ -205,66 +238,66 @@ export default function BrindeFormModal({ open, brinde, onClose, onSaved }) {
         }
       >
         <div className="space-y-3">
-          {/* Buscar no XBZ — disponível para novo brinde E para editar (atualiza nome/código/custo/foto, mantém estoque) */}
+          {/* Buscar no XBZ */}
           <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg space-y-2">
-              <div className="flex items-center gap-2 text-xs font-semibold text-amber-900">
-                <Search size={14} /> Buscar produto no XBZ
-                {isEdit && <span className="text-[10px] font-normal text-amber-700">(atualiza nome, código, custo e foto · mantém o estoque atual)</span>}
-              </div>
-              <div className="flex gap-2">
-                <input
-                  className="input flex-1"
-                  placeholder="Cole o código (ex: P$101011)"
-                  value={xbzBusca}
-                  onChange={(e) => setXbzBusca(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), buscarXBZ())}
-                />
-                <button
-                  type="button"
-                  className="btn-outline border-amber-300 text-amber-800 hover:bg-amber-100 flex-shrink-0"
-                  onClick={buscarXBZ}
-                  disabled={xbzBuscando || !xbzBusca.trim()}
-                >
-                  {xbzBuscando ? <Loader2 size={14} className="animate-spin" /> : <Search size={14} />}
-                  Buscar
-                </button>
-              </div>
+            <div className="flex items-center gap-2 text-xs font-semibold text-amber-900">
+              <Search size={14} /> Buscar produto no XBZ
+              {isEdit && <span className="text-[10px] font-normal text-amber-700">(atualiza nome, código, custo e foto · mantém o estoque atual)</span>}
+            </div>
+            <div className="flex gap-2">
+              <input
+                className="input flex-1"
+                placeholder="Cole o código (ex: P$101011)"
+                value={xbzBusca}
+                onChange={(e) => setXbzBusca(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), buscarXBZ())}
+              />
+              <button
+                type="button"
+                className="btn-outline border-amber-300 text-amber-800 hover:bg-amber-100 flex-shrink-0"
+                onClick={buscarXBZ}
+                disabled={xbzBuscando || !xbzBusca.trim()}
+              >
+                {xbzBuscando ? <Loader2 size={14} className="animate-spin" /> : <Search size={14} />}
+                Buscar
+              </button>
+            </div>
 
-              {xbzErro && (
-                <div className="text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded p-2">{xbzErro}</div>
-              )}
+            {xbzErro && (
+              <div className="text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded p-2">{xbzErro}</div>
+            )}
 
-              {xbzResultados && xbzResultados.length > 0 && (
-                <div className="space-y-1 max-h-56 overflow-y-auto">
-                  <div className="text-[11px] text-amber-800">
-                    {xbzResultados.length} resultado{xbzResultados.length > 1 ? 's' : ''} — clique para preencher
-                  </div>
-                  {xbzResultados.map((p) => (
-                    <button
-                      key={p.id}
-                      type="button"
-                      onClick={() => usarProdutoXBZ(p)}
-                      className="w-full bg-white hover:bg-amber-100 border border-amber-200 rounded-lg p-2 flex items-center gap-2 text-left transition-colors"
-                    >
-                      {p.foto ? (
-                        <img src={p.foto} alt="" className="w-10 h-10 rounded object-cover flex-shrink-0" />
-                      ) : (
-                        <div className="w-10 h-10 rounded bg-slate-100 grid place-items-center text-slate-300 flex-shrink-0">
-                          <Package2 size={16} />
-                        </div>
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <div className="text-xs font-semibold text-slate-800 truncate">{p.nome}</div>
-                        <div className="text-[10px] text-slate-500">{p.codigo_composto || p.codigo}</div>
-                      </div>
-                      <div className="text-xs font-bold text-emerald-700 flex-shrink-0">R$ {p.preco_formatado}</div>
-                    </button>
-                  ))}
+            {xbzResultados && xbzResultados.length > 0 && (
+              <div className="space-y-1 max-h-56 overflow-y-auto">
+                <div className="text-[11px] text-amber-800">
+                  {xbzResultados.length} resultado{xbzResultados.length > 1 ? 's' : ''} — clique para preencher
                 </div>
-              )}
+                {xbzResultados.map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => usarProdutoXBZ(p)}
+                    className="w-full bg-white hover:bg-amber-100 border border-amber-200 rounded-lg p-2 flex items-center gap-2 text-left transition-colors"
+                  >
+                    {p.foto ? (
+                      <img src={p.foto} alt="" className="w-10 h-10 rounded object-cover flex-shrink-0" />
+                    ) : (
+                      <div className="w-10 h-10 rounded bg-slate-100 grid place-items-center text-slate-300 flex-shrink-0">
+                        <Package2 size={16} />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs font-semibold text-slate-800 truncate">{p.nome}</div>
+                      <div className="text-[10px] text-slate-500">{p.codigo_composto || p.codigo}</div>
+                    </div>
+                    <div className="text-xs font-bold text-emerald-700 flex-shrink-0">R$ {p.preco_formatado}</div>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
-          {/* Foto + nome */}
+          {/* Foto + nome + código */}
           <div className="flex gap-3">
             <label className="block w-20 h-20 sm:w-24 sm:h-24 flex-shrink-0 bg-slate-100 rounded-lg overflow-hidden cursor-pointer hover:bg-slate-200 grid place-items-center text-slate-400 text-[10px] text-center">
               {preview ? (
@@ -307,86 +340,136 @@ export default function BrindeFormModal({ open, brinde, onClose, onSaved }) {
             </div>
           </div>
 
-          {/* Entrada de estoque - só na edição */}
+          {/* Ajuste de estoque — só na edição */}
           {isEdit && (
-            <div className="mt-2 p-3 bg-emerald-50 rounded-lg border border-emerald-200">
-              <div className="flex items-center justify-between gap-2">
-                <div className="text-xs">
-                  <div className="font-semibold text-emerald-800">Estoque atual: {form.quantidade_estoque}</div>
-                  <div className="text-emerald-700">Adicione novas unidades ao estoque</div>
+            <div className="mt-2 p-3 bg-slate-50 rounded-lg border border-slate-200">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="text-xs flex-1 min-w-[120px]">
+                  <div className="font-semibold text-slate-800">
+                    Estoque atual: <span className={form.quantidade_estoque <= 0 ? 'text-rose-600' : 'text-emerald-700'}>
+                      {form.quantidade_estoque}
+                    </span>
+                  </div>
+                  <div className="text-slate-500">Ajuste manual (entrada ou saída interna)</div>
                 </div>
-                <button
-                  type="button"
-                  className="btn-success text-xs px-3 py-2 flex-shrink-0"
-                  onClick={() => setShowEntrada(true)}
-                >
-                  <Plus size={14}/> Adicionar
-                </button>
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  <button
+                    type="button"
+                    className="btn-success text-xs px-2.5 py-1.5"
+                    onClick={() => setAjusteDirecao('entrada')}
+                    title="Adicionar unidades ao estoque"
+                  >
+                    <Plus size={14}/> Adicionar
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-danger text-xs px-2.5 py-1.5"
+                    onClick={() => setAjusteDirecao('saida')}
+                    title="Remover unidades do estoque"
+                    disabled={form.quantidade_estoque <= 0}
+                  >
+                    <Minus size={14}/> Remover
+                  </button>
+                </div>
               </div>
             </div>
           )}
 
-          {/* Imprimir etiquetas térmicas — só na edição */}
-          {isEdit && (
-            <div className="mt-2 p-3 bg-sky-50 rounded-lg border border-sky-200">
-              <div className="flex items-center justify-between gap-2 flex-wrap">
-                <div className="text-xs flex-1 min-w-[150px]">
-                  <div className="font-semibold text-sky-800 flex items-center gap-1">
-                    <Printer size={14}/> Etiquetas térmicas
-                  </div>
-                  <div className="text-sky-700">95×10mm, nome + código</div>
-                </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <input
-                    type="number"
-                    min="1"
-                    max="999"
-                    className="input w-16 text-center text-sm py-1"
-                    value={qtdEtiquetas}
-                    onChange={(e) => setQtdEtiquetas(Math.max(1, Number(e.target.value) || 1))}
-                    title="Quantidade de etiquetas"
-                  />
-                  <button
-                    type="button"
-                    className="btn-outline border-sky-300 text-sky-800 hover:bg-sky-100 text-xs px-3 py-2"
-                    onClick={() => imprimirEtiquetas([{
-                      nome: form.nome,
-                      codigo: form.codigo,
-                      quantidade: qtdEtiquetas,
-                    }])}
-                    disabled={!form.nome.trim()}
-                  >
-                    <Printer size={14}/> Imprimir
-                  </button>
-                </div>
+          {/* Parâmetros de gravação */}
+          <div className="mt-2 p-3 bg-indigo-50 rounded-lg border border-indigo-200 space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-indigo-900">
+                <Settings2 size={14}/> Parâmetros de gravação
               </div>
               <button
                 type="button"
-                className="text-[11px] text-sky-700 hover:text-sky-900 mt-1"
-                onClick={() => setQtdEtiquetas(Math.max(1, Number(form.quantidade_estoque) || 1))}
+                className="btn-outline border-indigo-300 text-indigo-800 hover:bg-indigo-100 text-xs px-2 py-1"
+                onClick={addParam}
               >
-                Usar quantidade do estoque ({form.quantidade_estoque})
+                <Plus size={12}/> Adicionar parâmetro
               </button>
             </div>
-          )}
+
+            {(!form.parametros_gravacao || form.parametros_gravacao.length === 0) ? (
+              <div className="text-[11px] text-indigo-700 italic">
+                Nenhum parâmetro definido. Clique em "Adicionar parâmetro" para configurar.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {form.parametros_gravacao.map((p, idx) => (
+                  <div key={idx} className="bg-white rounded-lg border border-indigo-200 p-2 space-y-2 relative">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="text-[10px] font-bold uppercase text-indigo-700">
+                        Parâmetro {idx + 1}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeParam(idx)}
+                        className="text-rose-600 hover:text-rose-800 p-0.5"
+                        title="Remover este parâmetro"
+                      >
+                        <X size={14}/>
+                      </button>
+                    </div>
+
+                    {/* Tipo - largura total */}
+                    <div>
+                      <label className="text-[10px] uppercase font-semibold text-slate-500 mb-0.5 block">Tipo</label>
+                      <select
+                        className="input text-sm py-1.5"
+                        value={p.tipo || 'laser'}
+                        onChange={(e) => setParam(idx, 'tipo', e.target.value)}
+                      >
+                        <option value="laser">Laser</option>
+                        <option value="CO2">CO2</option>
+                      </select>
+                    </div>
+
+                    {/* Grid de campos */}
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      <ParamCampo label="Ângulo (°)" value={p.angulo} onChange={(v) => setParam(idx, 'angulo', v)} />
+                      <ParamCampo label="Hachura" value={p.hachura} onChange={(v) => setParam(idx, 'hachura', v)} />
+                      <ParamCampo label="Velocidade" value={p.velocidade} onChange={(v) => setParam(idx, 'velocidade', v)} />
+                      <ParamCampo label="Potência" value={p.potencia} onChange={(v) => setParam(idx, 'potencia', v)} />
+                      <ParamCampo label="Repetições" value={p.repeticoes} onChange={(v) => setParam(idx, 'repeticoes', v)} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
           {err && <div className="text-rose-600 text-sm">{err}</div>}
         </div>
       </Modal>
 
-      {/* Modal aninhado de Entrada */}
+      {/* Modal aninhado de ajuste */}
       {isEdit && (
-        <EntradaModal
-          open={showEntrada}
+        <AjusteEstoqueModal
+          open={!!ajusteDirecao}
+          direcao={ajusteDirecao}
           brinde={brinde}
-          onClose={() => setShowEntrada(false)}
+          onClose={() => setAjusteDirecao(null)}
           onSaved={() => {
-            setShowEntrada(false);
+            setAjusteDirecao(null);
             onSaved?.();
             onClose();
           }}
         />
       )}
     </>
+  );
+}
+
+function ParamCampo({ label, value, onChange }) {
+  return (
+    <div>
+      <label className="text-[10px] uppercase font-semibold text-slate-500 mb-0.5 block">{label}</label>
+      <input
+        className="input text-sm py-1.5"
+        value={value || ''}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    </div>
   );
 }

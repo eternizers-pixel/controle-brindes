@@ -1,7 +1,7 @@
 // Tela "Entregar Brinde" — fluxo simples para dar baixa em brindes
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Search, Send, Package2, X } from 'lucide-react';
+import { Search, Send, Package2, X, Minus } from 'lucide-react';
 import { getBrindes } from '../api/client';
 import { formatInt, FAIXAS_CUSTO, getFaixaByKey } from '../utils/helpers';
 import SaidaModal from '../components/SaidaModal';
@@ -94,7 +94,7 @@ export default function Estoque() {
           <Send size={22} />
         </div>
         <h1 className="text-xl sm:text-2xl font-bold text-slate-800">Entregar Brinde</h1>
-        <p className="text-slate-500 text-sm">Toque em um brinde para dar baixa no estoque</p>
+        <p className="text-slate-500 text-sm">Toque no brinde pra entregar 1 unidade. Se for mais, toca de novo.</p>
       </header>
 
       <div className="card p-3 space-y-2">
@@ -184,11 +184,18 @@ export default function Estoque() {
                   {b.codigo && (
                     <div className="text-[11px] text-slate-500">cód. {b.codigo}</div>
                   )}
-                  <div className="text-xs text-slate-500 mt-auto pt-1 flex items-baseline justify-between">
-                    <span>Estoque</span>
-                    <span className={`text-base font-bold ${sem ? 'text-rose-600' : 'text-slate-800'}`}>
-                      {formatInt(b.quantidade_estoque)}
+                  <div className="text-xs text-slate-500 mt-auto pt-1 flex items-center justify-between gap-1">
+                    <span>
+                      Estoque{' '}
+                      <span className={`font-bold ${sem ? 'text-rose-600' : 'text-slate-800'}`}>
+                        {formatInt(b.quantidade_estoque)}
+                      </span>
                     </span>
+                    {!sem && (
+                      <span className="inline-flex items-center gap-1 bg-rose-500 text-white text-xs font-bold rounded-full px-2.5 py-1 group-hover:bg-rose-600 transition-colors shadow-sm">
+                        <Minus size={12} strokeWidth={3}/> 1
+                      </span>
+                    )}
                   </div>
                 </div>
               </button>

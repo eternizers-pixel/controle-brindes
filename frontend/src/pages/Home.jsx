@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Send, Package, BarChart3, History, FileText, Gift, HandCoins } from 'lucide-react';
+import { Send, Package, BarChart3, History, FileText, Gift, HandCoins, Settings2 } from 'lucide-react';
 
 const cards = [
   {
@@ -17,6 +17,14 @@ const cards = [
     desc: 'Adicionar, editar e repor estoque',
     cardBg: 'bg-brand-50 hover:bg-brand-100 border-brand-100',
     iconBg: 'bg-brand-600',
+  },
+  {
+    to: '/parametros',
+    icon: Settings2,
+    title: 'Parâmetros',
+    desc: 'Configurações de gravação',
+    cardBg: 'bg-indigo-50 hover:bg-indigo-100 border-indigo-100',
+    iconBg: 'bg-indigo-500',
   },
   {
     to: '/patrocinios',
@@ -54,7 +62,7 @@ export default function Home() {
         <p className="text-slate-500 mt-1 text-sm">Estoque, doações e patrocínios em um só lugar</p>
       </header>
 
-      <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-5">
         {cards.map((c) => {
           const Icon = c.icon;
           return (

@@ -242,8 +242,21 @@ export default function Parametros() {
                 </div>
               ) : (
                 <div className="space-y-2">
+                  {/* Datalists compartilhados: sugestões com possibilidade de digitar livre */}
+                  <datalist id="parametros-angulos">
+                    <option value="0°" />
+                    <option value="45°" />
+                    <option value="80°" />
+                    <option value="90°" />
+                  </datalist>
+                  <datalist id="parametros-hachuras">
+                    <option value="0.02" />
+                    <option value="0.04" />
+                    <option value="0.06" />
+                  </datalist>
+
                   {params.map((p, idx) => (
-                    <div key={idx} className="card p-3 sm:p-4 space-y-3 border-l-4 border-l-indigo-400">
+                    <div key={idx} className="card p-3 sm:p-4 space-y-2 border-l-4 border-l-indigo-400">
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
                           <div className="w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 grid place-items-center text-xs font-bold">
@@ -263,34 +276,45 @@ export default function Parametros() {
                         </button>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {/* Linha 1: TIPO sozinho */}
+                      <div className="w-[140px]">
+                        <label className="label">Tipo</label>
+                        <select
+                          className="input"
+                          value={p.tipo || 'laser'}
+                          onChange={(e) => setParam(idx, 'tipo', e.target.value)}
+                        >
+                          <option value="laser">Laser</option>
+                          <option value="CO2">CO2</option>
+                        </select>
+                      </div>
+
+                      {/* Linha 2: ANGULO | HACHURA */}
+                      <div className="grid grid-cols-2 gap-2 max-w-[300px]">
                         <div>
-                          <label className="label">Tipo</label>
-                          <select
-                            className="input"
-                            value={p.tipo || 'laser'}
-                            onChange={(e) => setParam(idx, 'tipo', e.target.value)}
-                          >
-                            <option value="laser">Laser</option>
-                            <option value="CO2">CO2</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label className="label">Ângulo (°)</label>
+                          <label className="label">Ângulo</label>
                           <input
+                            list="parametros-angulos"
                             className="input"
                             value={p.angulo || ''}
                             onChange={(e) => setParam(idx, 'angulo', e.target.value)}
+                            placeholder="0°, 45°…"
                           />
                         </div>
                         <div>
                           <label className="label">Hachura</label>
                           <input
+                            list="parametros-hachuras"
                             className="input"
                             value={p.hachura || ''}
                             onChange={(e) => setParam(idx, 'hachura', e.target.value)}
+                            placeholder="0.02, 0.04…"
                           />
                         </div>
+                      </div>
+
+                      {/* Linha 3: VELOCIDADE | POTÊNCIA | REPETIÇÕES */}
+                      <div className="grid grid-cols-3 gap-2 max-w-[450px]">
                         <div>
                           <label className="label">Velocidade</label>
                           <input

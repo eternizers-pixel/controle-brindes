@@ -114,12 +114,18 @@ export default function Patrocinios() {
                         {labelFormaPagamento(p.forma_pagamento)}
                       </span>
                     )}
-                    {p.categoria && <span className="badge bg-sky-100 text-sky-700">{p.categoria}</span>}
+                    {p.categoria && <span className="badge bg-orange-100 text-orange-700">{p.categoria}</span>}
                     {!p.ativo && <span className="badge bg-slate-200 text-slate-600">inativo</span>}
                   </div>
                   <div className="text-xs text-slate-500 mt-0.5">
-                    Início: {formatDate(p.data_inicio)}
-                    {p.data_fim && ` · Fim: ${formatDate(p.data_fim)}`}
+                    {p.recorrencia === 'unica' ? (
+                      <>Data do patrocínio: {formatDate(p.data_inicio)}</>
+                    ) : (
+                      <>
+                        Início: {formatDate(p.data_inicio)}
+                        {p.data_fim && ` · Fim: ${formatDate(p.data_fim)}`}
+                      </>
+                    )}
                   </div>
                   {p.observacao && (
                     <div className="text-xs text-slate-600 italic mt-1 line-clamp-2">{p.observacao}</div>

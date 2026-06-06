@@ -8,6 +8,7 @@ import Patrocinios from './pages/Patrocinios';
 import Movimentacoes from './pages/Movimentacoes';
 import Relatorios from './pages/Relatorios';
 import PesquisaXBZ from './pages/PesquisaXBZ';
+import Parametros from './pages/Parametros';
 
 export default function App() {
   return (
@@ -18,6 +19,7 @@ export default function App() {
         <Route path="doacao"        element={<Navigate to="/entregar" replace />} />
         <Route path="estoque"       element={<Navigate to="/entregar" replace />} />
         <Route path="brindes"       element={<Brindes />} />
+        <Route path="parametros"    element={<Parametros />} />
         <Route path="patrocinios"   element={<Patrocinios />} />
         <Route path="dashboard"     element={<Dashboard />} />
         <Route path="movimentacoes" element={<Movimentacoes />} />

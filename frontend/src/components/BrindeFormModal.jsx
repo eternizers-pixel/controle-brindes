@@ -6,6 +6,7 @@ import Modal from './Modal';
 import { criarBrinde, atualizarBrinde, excluirBrinde, buscarNoXBZ } from '../api/client';
 import AjusteEstoqueModal from './AjusteEstoqueModal';
 import { useToast } from './Toast';
+import { compressImageFile } from '../utils/imagem';
 
 // Parâmetro de gravação vazio (base para "Adicionar parâmetro")
 const PARAM_VAZIO = () => ({
@@ -102,15 +103,18 @@ export default function BrindeFormModal({ open, brinde, onClose, onSaved }) {
   };
 
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
-  const onFile = (e) => {
+  const onFile = async (e) => {
     const f = e.target.files?.[0];
     if (!f) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      setFoto(reader.result);
-      setPreview(reader.result);
-    };
-    reader.readAsDataURL(f);
+    try {
+      const dataUrl = await compressImageFile(f);
+      setFoto(dataUrl);
+      setPreview(dataUrl);
+    } catch (err) {
+      toast.error(err.message || 'Erro ao processar a imagem.');
+    } finally {
+      e.target.value = '';
+    }
   };
 
   // === Parâmetros de gravação ===

@@ -8,6 +8,7 @@ import {
   criarProdutoGravacao, atualizarProdutoGravacao, excluirProdutoGravacao, buscarNoXBZ,
 } from '../api/client';
 import { useToast } from './Toast';
+import { compressImageFile } from '../utils/imagem';
 
 export default function ProdutoGravacaoModal({ open, produto, onClose, onSaved, onDeleted }) {
   const toast = useToast();
@@ -77,15 +78,18 @@ export default function ProdutoGravacaoModal({ open, produto, onClose, onSaved, 
   };
 
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
-  const onFile = (e) => {
+  const onFile = async (e) => {
     const f = e.target.files?.[0];
     if (!f) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      setFoto(reader.result);
-      setPreview(reader.result);
-    };
-    reader.readAsDataURL(f);
+    try {
+      const dataUrl = await compressImageFile(f);
+      setFoto(dataUrl);
+      setPreview(dataUrl);
+    } catch (err) {
+      toast.error(err.message || 'Erro ao processar a imagem.');
+    } finally {
+      e.target.value = '';
+    }
   };
 
   const submit = async () => {

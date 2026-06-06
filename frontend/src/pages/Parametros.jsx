@@ -92,6 +92,15 @@ export default function Parametros() {
   const [dirty, setDirty] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [modalProduto, setModalProduto] = useState(null);
+  const [fotoAmpliada, setFotoAmpliada] = useState(null);
+
+  // Esc fecha o lightbox
+  useEffect(() => {
+    if (!fotoAmpliada) return;
+    const handler = (e) => { if (e.key === 'Escape') setFotoAmpliada(null); };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [fotoAmpliada]);
 
   const load = async ({ silent = false } = {}) => {
     if (!silent) setLoading(true);
@@ -495,6 +504,7 @@ export default function Parametros() {
                       onSetPasso={(pIdx, campo, valor) => setPassoField(idx, pIdx, campo, valor)}
                       onAddPasso={() => addPasso(idx)}
                       onRemovePasso={(pIdx) => removePasso(idx, pIdx)}
+                      onZoom={(src) => setFotoAmpliada(src)}
                     />
                   ))}
 
@@ -530,6 +540,36 @@ export default function Parametros() {
         onSaved={aoSalvarProduto}
         onDeleted={aoExcluirProduto}
       />
+
+      <Lightbox src={fotoAmpliada} onClose={() => setFotoAmpliada(null)} />
+    </div>
+  );
+}
+
+// Lightbox simples: overlay full-screen com a foto centralizada.
+function Lightbox({ src, onClose }) {
+  if (!src) return null;
+  return (
+    <div
+      className="fixed inset-0 z-[100] bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+    >
+      <button
+        type="button"
+        onClick={onClose}
+        className="absolute top-4 right-4 text-white bg-white/10 hover:bg-white/25 rounded-full p-2 transition-colors"
+        title="Fechar (Esc)"
+      >
+        <X size={24}/>
+      </button>
+      <img
+        src={src}
+        alt="Foto ampliada"
+        className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      />
     </div>
   );
 }
@@ -539,7 +579,7 @@ export default function Parametros() {
 // ===========================================================================
 function ParametroCard({
   idx, param, editing, onToggleEdit, onSetField, onRemove,
-  onSetPasso, onAddPasso, onRemovePasso,
+  onSetPasso, onAddPasso, onRemovePasso, onZoom,
 }) {
   const titulo = param.titulo?.trim() || `Parâmetro ${idx + 1}`;
 
@@ -593,9 +633,10 @@ function ParametroCard({
           onSetPasso={onSetPasso}
           onAddPasso={onAddPasso}
           onRemovePasso={onRemovePasso}
+          onZoom={onZoom}
         />
       ) : (
-        <ParametroViewMode param={param} />
+        <ParametroViewMode param={param} onZoom={onZoom} />
       )}
     </div>
   );
@@ -604,7 +645,7 @@ function ParametroCard({
 // ===========================================================================
 // VIEW MODE — exibição compacta. Múltiplos passos viram colunas lado a lado.
 // ===========================================================================
-function ParametroViewMode({ param }) {
+function ParametroViewMode({ param, onZoom }) {
   const passos = param.passos || [];
   const temAlgo = passos.some((p) =>
     p.tipo || p.angulo || p.hachura || p.velocidade || p.potencia || p.repeticoes
@@ -614,13 +655,18 @@ function ParametroViewMode({ param }) {
     <div className="flex flex-col sm:flex-row gap-3">
       {/* Foto à esquerda */}
       {param.foto && (
-        <a href={param.foto} target="_blank" rel="noreferrer" className="flex-shrink-0">
+        <button
+          type="button"
+          onClick={() => onZoom?.(param.foto)}
+          className="flex-shrink-0 cursor-zoom-in"
+          title="Clique para ampliar"
+        >
           <img
             src={param.foto}
             alt=""
             className="w-20 h-20 sm:w-24 sm:h-24 rounded-lg object-cover border border-slate-200 hover:border-indigo-400 transition-colors"
           />
-        </a>
+        </button>
       )}
 
       <div className="flex-1 min-w-0 space-y-2">
@@ -685,7 +731,7 @@ function LinhaTabela({ label, passos, campo, capitalize }) {
 // ===========================================================================
 // EDIT MODE — formulário. Múltiplos passos viram blocos lado a lado.
 // ===========================================================================
-function ParametroEditMode({ param, onSetField, onSetPasso, onAddPasso, onRemovePasso }) {
+function ParametroEditMode({ param, onSetField, onSetPasso, onAddPasso, onRemovePasso, onZoom }) {
   return (
     <div className="space-y-3">
       {/* Passos lado a lado */}
@@ -808,13 +854,18 @@ function ParametroEditMode({ param, onSetField, onSetPasso, onAddPasso, onRemove
         <div className="flex items-start gap-2">
           {param.foto ? (
             <div className="relative group flex-shrink-0">
-              <a href={param.foto} target="_blank" rel="noreferrer">
+              <button
+                type="button"
+                onClick={() => onZoom?.(param.foto)}
+                className="cursor-zoom-in"
+                title="Clique para ampliar"
+              >
                 <img
                   src={param.foto}
                   alt=""
                   className="w-24 h-24 sm:w-28 sm:h-28 rounded-lg object-cover border border-slate-200 hover:border-indigo-400 transition-colors"
                 />
-              </a>
+              </button>
               <button
                 type="button"
                 onClick={() => onSetField('foto', null)}

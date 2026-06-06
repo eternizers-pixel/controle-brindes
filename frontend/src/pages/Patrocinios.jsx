@@ -1,14 +1,19 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Plus, Search, HandCoins, Calendar, LineChart, X } from 'lucide-react';
 import { getPatrocinios } from '../api/client';
-import { formatBRL, formatDate, labelRecorrencia, valorMensalPatrocinio, calcularInvestimentos, labelFormaPagamento, badgeFormaPagamento } from '../utils/helpers';
+import {
+  formatBRL, formatDate, labelRecorrencia, valorMensalPatrocinio, calcularInvestimentos,
+  labelFormaPagamento, badgeFormaPagamento, FORMAS_PAGAMENTO, RECORRENCIAS,
+} from '../utils/helpers';
 import PatrocinioFormModal from '../components/PatrocinioFormModal';
 
 export default function Patrocinios() {
   const [lista, setLista] = useState([]);
   const [busca, setBusca] = useState('');
-  const [filtro, setFiltro] = useState('ativo'); // ativo | inativo | todos
-  const [filtroMes, setFiltroMes] = useState(''); // '' ou 'YYYY-MM'
+  const [filtroMes, setFiltroMes] = useState('');         // 'YYYY-MM'
+  const [filtroForma, setFiltroForma] = useState('');     // forma_pagamento.value
+  const [filtroCategoria, setFiltroCategoria] = useState(''); // texto livre
+  const [filtroRecorrencia, setFiltroRecorrencia] = useState(''); // recorrencia.value
   const [loading, setLoading] = useState(true);
   const [editFor, setEditFor] = useState(null);
   const [novoOpen, setNovoOpen] = useState(false);
@@ -16,30 +21,48 @@ export default function Patrocinios() {
   const load = async () => {
     setLoading(true);
     try {
-      const params = { search: busca };
-      if (filtro === 'ativo')   params.ativo = true;
-      if (filtro === 'inativo') params.ativo = false;
-      const data = await getPatrocinios(params);
+      const data = await getPatrocinios({ search: busca });
       setLista(data);
     } finally { setLoading(false); }
   };
-  useEffect(() => { load(); }, [filtro]);
+  useEffect(() => { load(); }, []);
   useEffect(() => { const t = setTimeout(load, 250); return () => clearTimeout(t); }, [busca]);
 
-  // Aplica filtro de mês JS-side.
-  // Lógica: única vez entra se data_inicio está no mês selecionado.
-  // Recorrente entra se estava ativo naquele mês (data_inicio <= mês <= data_fim ou sem fim).
+  // Categorias distintas presentes na lista atual (pra montar o dropdown)
+  const categoriasDisponiveis = useMemo(() => {
+    const set = new Set();
+    lista.forEach((p) => { if (p.categoria) set.add(p.categoria); });
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  }, [lista]);
+
+  // Aplica todos os filtros JS-side.
   const listaFiltrada = useMemo(() => {
-    if (!filtroMes) return lista;
     return lista.filter((p) => {
-      const inicio = (p.data_inicio || '').slice(0, 7);
-      const fim    = (p.data_fim    || '').slice(0, 7);
-      if (p.recorrencia === 'unica') return inicio === filtroMes;
-      if (inicio > filtroMes) return false;
-      if (fim && fim < filtroMes) return false;
+      // Filtro de mês (única: dentro do mês; recorrente: ativo naquele mês)
+      if (filtroMes) {
+        const inicio = (p.data_inicio || '').slice(0, 7);
+        const fim    = (p.data_fim    || '').slice(0, 7);
+        if (p.recorrencia === 'unica') {
+          if (inicio !== filtroMes) return false;
+        } else {
+          if (inicio > filtroMes) return false;
+          if (fim && fim < filtroMes) return false;
+        }
+      }
+      if (filtroForma && p.forma_pagamento !== filtroForma) return false;
+      if (filtroCategoria && p.categoria !== filtroCategoria) return false;
+      if (filtroRecorrencia && p.recorrencia !== filtroRecorrencia) return false;
       return true;
     });
-  }, [lista, filtroMes]);
+  }, [lista, filtroMes, filtroForma, filtroCategoria, filtroRecorrencia]);
+
+  const algumFiltroAtivo = !!(filtroMes || filtroForma || filtroCategoria || filtroRecorrencia);
+  const limparFiltros = () => {
+    setFiltroMes('');
+    setFiltroForma('');
+    setFiltroCategoria('');
+    setFiltroRecorrencia('');
+  };
 
   const totais = calcularInvestimentos(lista);
 
@@ -107,26 +130,59 @@ export default function Patrocinios() {
             onChange={(e) => setFiltroMes(e.target.value)}
             title="Filtrar por mês"
           />
-          <select className="input sm:w-40" value={filtro} onChange={(e) => setFiltro(e.target.value)}>
-            <option value="ativo">Apenas ativos</option>
-            <option value="inativo">Apenas inativos</option>
-            <option value="todos">Todos</option>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <select
+            className="input"
+            value={filtroForma}
+            onChange={(e) => setFiltroForma(e.target.value)}
+            title="Filtrar por forma de pagamento"
+          >
+            <option value="">Forma de pagamento (todas)</option>
+            {FORMAS_PAGAMENTO.map((f) => (
+              <option key={f.value} value={f.value}>{f.label}</option>
+            ))}
+          </select>
+          <select
+            className="input"
+            value={filtroCategoria}
+            onChange={(e) => setFiltroCategoria(e.target.value)}
+            title="Filtrar por categoria"
+            disabled={categoriasDisponiveis.length === 0}
+          >
+            <option value="">
+              {categoriasDisponiveis.length === 0
+                ? 'Categoria (nenhuma cadastrada)'
+                : 'Categoria (todas)'}
+            </option>
+            {categoriasDisponiveis.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+          <select
+            className="input"
+            value={filtroRecorrencia}
+            onChange={(e) => setFiltroRecorrencia(e.target.value)}
+            title="Filtrar por recorrência"
+          >
+            <option value="">Recorrência (todas)</option>
+            {RECORRENCIAS.map((r) => (
+              <option key={r.value} value={r.value}>{r.label}</option>
+            ))}
           </select>
         </div>
-        {filtroMes && (
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-slate-600">
-              Mostrando patrocínios <strong>de {formatarMes(filtroMes)}</strong>
-              <span className="text-slate-400 ml-1">
-                ({listaFiltrada.length} {listaFiltrada.length === 1 ? 'registro' : 'registros'})
-              </span>
+        {algumFiltroAtivo && (
+          <div className="flex items-center justify-between gap-3 pt-1 border-t border-slate-100">
+            <span className="text-xs text-slate-600">
+              <strong>{listaFiltrada.length}</strong> {listaFiltrada.length === 1 ? 'registro' : 'registros'}
+              {filtroMes && <> em <strong>{formatarMes(filtroMes)}</strong></>}
             </span>
             <button
               type="button"
-              onClick={() => setFiltroMes('')}
-              className="text-slate-500 hover:text-slate-800 flex items-center gap-1"
+              onClick={limparFiltros}
+              className="btn bg-rose-600 text-white hover:bg-rose-700 text-sm px-4 py-2 shadow-sm font-semibold"
             >
-              <X size={12} /> Limpar mês
+              <X size={16} /> Limpar filtros
             </button>
           </div>
         )}
@@ -136,8 +192,8 @@ export default function Patrocinios() {
         <div className="card p-6 text-slate-500">Carregando…</div>
       ) : listaFiltrada.length === 0 ? (
         <div className="card p-10 text-center text-slate-500">
-          {filtroMes
-            ? `Nenhum patrocínio em ${formatarMes(filtroMes)}.`
+          {algumFiltroAtivo
+            ? 'Nenhum patrocínio com os filtros selecionados.'
             : busca
               ? 'Nenhum patrocínio encontrado.'
               : 'Nenhum patrocínio cadastrado ainda.'}

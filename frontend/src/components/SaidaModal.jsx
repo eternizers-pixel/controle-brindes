@@ -1,4 +1,7 @@
+// Saída rápida: sempre entrega 1 unidade. Não pede quantidade.
+// Se precisar entregar mais, clica no botão "-1" várias vezes.
 import { useState, useEffect } from 'react';
+import { Minus } from 'lucide-react';
 import Modal from './Modal';
 import { registrarSaida, getDestinatarios } from '../api/client';
 import { hoje, TIPOS_SOLICITANTE } from '../utils/helpers';
@@ -7,7 +10,7 @@ import { useToast } from './Toast';
 export default function SaidaModal({ open, brinde, onClose, onSaved }) {
   const toast = useToast();
   const [form, setForm] = useState({
-    quantidade: '', data: hoje(),
+    data: hoje(),
     destinatario_nome: '', tipo_solicitante: '',
     observacao: '',
   });
@@ -18,7 +21,7 @@ export default function SaidaModal({ open, brinde, onClose, onSaved }) {
   useEffect(() => {
     if (open) {
       setForm({
-        quantidade: '', data: hoje(),
+        data: hoje(),
         destinatario_nome: '', tipo_solicitante: '',
         observacao: '',
       });
@@ -31,23 +34,23 @@ export default function SaidaModal({ open, brinde, onClose, onSaved }) {
 
   const submit = async () => {
     setErr('');
-    const qty = Number(form.quantidade);
-    if (!qty || qty <= 0) return setErr('Informe uma quantidade válida.');
-    if (qty > brinde.quantidade_estoque)
-      return setErr(`Estoque insuficiente. Disponível: ${brinde.quantidade_estoque}`);
+    if (!brinde || brinde.quantidade_estoque < 1) {
+      return setErr(`Estoque insuficiente. Disponível: ${brinde?.quantidade_estoque || 0}`);
+    }
+    if (!form.data) return setErr('Informe a data.');
 
     setLoading(true);
     try {
       await registrarSaida({
         brinde_id: brinde.id,
-        quantidade: qty,
+        quantidade: 1,
         data: form.data,
         destinatario_nome: form.destinatario_nome || null,
         tipo_solicitante: form.tipo_solicitante || null,
         responsavel: null,
         observacao: form.observacao || null,
       });
-      toast.success(`Saída de ${qty} ${qty > 1 ? 'unidades' : 'unidade'} de "${brinde.nome}" registrada!`);
+      toast.success(`−1 unidade de "${brinde.nome}" entregue!`);
       onSaved?.();
       onClose();
     } catch (e) {
@@ -64,37 +67,31 @@ export default function SaidaModal({ open, brinde, onClose, onSaved }) {
       open={open}
       onClose={onClose}
       size="md"
-      title={`Saída — ${brinde?.nome || ''}`}
+      title={brinde ? `Entregar — ${brinde.nome}` : 'Entregar'}
       footer={
         <>
           <button className="btn-ghost" onClick={onClose} disabled={loading}>Cancelar</button>
           <button className="btn-danger" onClick={submit} disabled={loading}>
-            {loading ? 'Salvando…' : 'Registrar saída'}
+            {loading ? 'Salvando…' : <><Minus size={14}/> Confirmar entrega</>}
           </button>
         </>
       }
     >
-      <div className="mb-3 text-xs text-slate-500">
-        Disponível em estoque: <span className="font-semibold text-slate-700">{brinde?.quantidade_estoque}</span>
+      {/* Banner — destaca o que vai acontecer */}
+      <div className="mb-3 p-2.5 bg-rose-50 border border-rose-200 rounded-lg flex items-center justify-between gap-2">
+        <div className="text-xs text-rose-900">
+          Vai entregar <strong>1 unidade</strong> de "{brinde?.nome}"
+        </div>
+        <div className="text-[11px] text-slate-500 flex-shrink-0">
+          Estoque atual: <span className="font-semibold text-slate-700">{brinde?.quantidade_estoque}</span>
+        </div>
       </div>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
-          <label className="label">Quantidade *</label>
-          <input
-            className="input"
-            type="number"
-            min="1"
-            max={brinde?.quantidade_estoque}
-            value={form.quantidade}
-            onChange={set('quantidade')}
-            autoFocus
-          />
-        </div>
-        <div>
           <label className="label">Data da entrega</label>
-          <input className="input" type="date" value={form.data} onChange={set('data')} />
+          <input className="input" type="date" value={form.data} onChange={set('data')} autoFocus />
         </div>
-
         <div>
           <label className="label">Tipo de solicitante</label>
           <select className="input" value={form.tipo_solicitante} onChange={set('tipo_solicitante')}>
@@ -104,7 +101,8 @@ export default function SaidaModal({ open, brinde, onClose, onSaved }) {
             ))}
           </select>
         </div>
-        <div>
+
+        <div className="sm:col-span-2">
           <label className="label">Para quem foi</label>
           <input
             className="input"

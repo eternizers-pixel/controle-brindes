@@ -1,11 +1,16 @@
 // Página de Parâmetros de gravação
-// Layout split: lista de brindes à esquerda, foto + editor à direita (foto sticky).
+// Mostra tanto BRINDES (com seus parâmetros) quanto PRODUTOS_GRAVACAO
+// (itens que não são brindes mas tem parâmetros salvos).
 import { useEffect, useMemo, useState } from 'react';
 import {
-  Search, Package2, Settings2, Plus, X, Save, ArrowLeft, Check,
+  Search, Package2, Settings2, Plus, X, Save, ArrowLeft, Check, Wrench, Edit2,
 } from 'lucide-react';
-import { getBrindes, atualizarBrinde } from '../api/client';
+import {
+  getBrindes, atualizarBrinde,
+  getProdutosGravacao, atualizarProdutoGravacao,
+} from '../api/client';
 import { useToast } from '../components/Toast';
+import ProdutoGravacaoModal from '../components/ProdutoGravacaoModal';
 
 const PARAM_VAZIO = () => ({
   tipo: 'laser',
@@ -14,40 +19,51 @@ const PARAM_VAZIO = () => ({
   velocidade: '',
   potencia: '',
   repeticoes: '',
+  observacao: '',
 });
 
 export default function Parametros() {
   const toast = useToast();
-  const [brindes, setBrindes] = useState([]);
+  const [itens, setItens] = useState([]); // brindes + produtos_gravacao mesclados
   const [loading, setLoading] = useState(true);
   const [busca, setBusca] = useState('');
+  const [filtroTipo, setFiltroTipo] = useState('todos'); // 'todos' | 'brinde' | 'gravacao'
   const [selecionado, setSelecionado] = useState(null);
   const [params, setParams] = useState([]);
   const [dirty, setDirty] = useState(false);
   const [salvando, setSalvando] = useState(false);
+  const [modalProduto, setModalProduto] = useState(null); // null | 'novo' | <produto_obj>
 
   const load = async ({ silent = false } = {}) => {
     if (!silent) setLoading(true);
     try {
-      const data = await getBrindes({ status: 'ativo' });
-      setBrindes(data);
+      const [brindes, produtos] = await Promise.all([
+        getBrindes({ status: 'ativo' }),
+        getProdutosGravacao(),
+      ]);
+      const lista = [
+        ...brindes.map((b) => ({ ...b, _tipo: 'brinde' })),
+        ...produtos.map((p) => ({ ...p, _tipo: 'gravacao' })),
+      ].sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR'));
+      setItens(lista);
     } finally { if (!silent) setLoading(false); }
   };
   useEffect(() => { load(); }, []);
 
-  const brindesFiltrados = useMemo(() => {
+  const itensFiltrados = useMemo(() => {
     const s = busca.trim().toLowerCase();
-    if (!s) return brindes;
-    return brindes.filter((b) =>
-      (b.nome || '').toLowerCase().includes(s) ||
-      (b.codigo || '').toLowerCase().includes(s)
-    );
-  }, [brindes, busca]);
+    return itens.filter((b) => {
+      if (filtroTipo === 'brinde' && b._tipo !== 'brinde') return false;
+      if (filtroTipo === 'gravacao' && b._tipo !== 'gravacao') return false;
+      if (!s) return true;
+      return (b.nome || '').toLowerCase().includes(s) ||
+             (b.codigo || '').toLowerCase().includes(s);
+    });
+  }, [itens, busca, filtroTipo]);
 
-  // Quando seleciona um brinde, carrega seus parâmetros pro estado local
   const selecionar = (b) => {
     if (dirty) {
-      if (!window.confirm('Você tem alterações não salvas. Trocar de brinde mesmo assim?')) return;
+      if (!window.confirm('Você tem alterações não salvas. Trocar de item mesmo assim?')) return;
     }
     setSelecionado(b);
     setParams(Array.isArray(b.parametros_gravacao) ? [...b.parametros_gravacao] : []);
@@ -75,12 +91,15 @@ export default function Parametros() {
     if (!selecionado) return;
     setSalvando(true);
     try {
-      await atualizarBrinde(selecionado.id, { parametros_gravacao: params });
+      const fn = selecionado._tipo === 'gravacao' ? atualizarProdutoGravacao : atualizarBrinde;
+      await fn(selecionado.id, { parametros_gravacao: params });
       toast.success(`Parâmetros de "${selecionado.nome}" salvos!`);
       setDirty(false);
-      // Atualiza a versão local do brinde sem trocar o foco
-      setBrindes((lista) =>
-        lista.map((b) => b.id === selecionado.id ? { ...b, parametros_gravacao: params } : b)
+      // Atualiza a versão local
+      setItens((lista) =>
+        lista.map((b) => (b.id === selecionado.id && b._tipo === selecionado._tipo)
+          ? { ...b, parametros_gravacao: params }
+          : b)
       );
       setSelecionado((s) => ({ ...s, parametros_gravacao: params }));
     } catch (e) {
@@ -90,22 +109,52 @@ export default function Parametros() {
     }
   };
 
+  // Quando o modal salva um novo produto_gravacao
+  const aoSalvarProduto = (produto) => {
+    if (!produto) { load({ silent: true }); return; }
+    setItens((lista) => {
+      const semEle = lista.filter((b) => !(b.id === produto.id && b._tipo === 'gravacao'));
+      const novo = { ...produto, _tipo: 'gravacao' };
+      return [...semEle, novo].sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR'));
+    });
+    // Se acabou de criar ou editar o item selecionado, atualiza foco
+    const novoItem = { ...produto, _tipo: 'gravacao' };
+    setSelecionado(novoItem);
+    setParams(Array.isArray(produto.parametros_gravacao) ? [...produto.parametros_gravacao] : []);
+    setDirty(false);
+  };
+
+  const aoExcluirProduto = (id) => {
+    setItens((lista) => lista.filter((b) => !(b.id === id && b._tipo === 'gravacao')));
+    if (selecionado?.id === id && selecionado?._tipo === 'gravacao') {
+      setSelecionado(null);
+      setParams([]);
+      setDirty(false);
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto">
-      <header className="mb-4">
+      <header className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex items-center gap-2">
           <div className="w-10 h-10 rounded-full bg-indigo-500 text-white grid place-items-center">
             <Settings2 size={20}/>
           </div>
           <div>
             <h1 className="text-xl sm:text-2xl font-bold text-slate-800">Parâmetros de gravação</h1>
-            <p className="text-slate-500 text-sm">Configure laser/CO2, ângulo, hachura, velocidade, potência e repetições por brinde</p>
+            <p className="text-slate-500 text-sm">Brindes + produtos externos (só pra gravação)</p>
           </div>
         </div>
+        <button
+          className="btn-primary text-sm flex-shrink-0"
+          onClick={() => setModalProduto('novo')}
+        >
+          <Plus size={14}/> Novo produto de gravação
+        </button>
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-        {/* Lista de brindes (esquerda) */}
+        {/* Lista de itens (esquerda) */}
         <div className={`md:col-span-5 lg:col-span-5 ${selecionado ? 'hidden md:block' : ''}`}>
           <div className="card p-3 sticky top-4">
             <div className="relative mb-2">
@@ -118,18 +167,41 @@ export default function Parametros() {
               />
             </div>
 
+            {/* Filtro por tipo */}
+            <div className="flex gap-1 mb-2 text-xs">
+              {[
+                { key: 'todos', label: 'Todos' },
+                { key: 'brinde', label: 'Brindes' },
+                { key: 'gravacao', label: 'Externos' },
+              ].map((opt) => (
+                <button
+                  key={opt.key}
+                  type="button"
+                  onClick={() => setFiltroTipo(opt.key)}
+                  className={`flex-1 px-2 py-1 rounded-md transition-colors ${
+                    filtroTipo === opt.key
+                      ? 'bg-indigo-600 text-white font-semibold'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+
             {loading ? (
               <div className="text-slate-500 text-sm py-4">Carregando…</div>
-            ) : brindesFiltrados.length === 0 ? (
-              <div className="text-slate-500 text-sm py-4 text-center">Nenhum brinde encontrado.</div>
+            ) : itensFiltrados.length === 0 ? (
+              <div className="text-slate-500 text-sm py-4 text-center">Nenhum item encontrado.</div>
             ) : (
-              <div className="space-y-1 max-h-[calc(100vh-220px)] overflow-y-auto pr-1">
-                {brindesFiltrados.map((b) => {
-                  const ativo = selecionado?.id === b.id;
+              <div className="space-y-1 max-h-[calc(100vh-260px)] overflow-y-auto pr-1">
+                {itensFiltrados.map((b) => {
+                  const ativo = selecionado?.id === b.id && selecionado?._tipo === b._tipo;
                   const temParams = Array.isArray(b.parametros_gravacao) && b.parametros_gravacao.length > 0;
+                  const isExterno = b._tipo === 'gravacao';
                   return (
                     <button
-                      key={b.id}
+                      key={`${b._tipo}-${b.id}`}
                       type="button"
                       onClick={() => selecionar(b)}
                       className={`w-full text-left p-2 rounded-lg flex items-center gap-2 transition-colors border ${
@@ -138,11 +210,18 @@ export default function Parametros() {
                           : 'bg-white border-transparent hover:bg-slate-50 hover:border-slate-200'
                       }`}
                     >
-                      <div className="w-10 h-10 rounded bg-slate-100 flex-shrink-0 overflow-hidden grid place-items-center">
+                      <div className={`w-10 h-10 rounded flex-shrink-0 overflow-hidden grid place-items-center relative ${
+                        isExterno ? 'bg-amber-50' : 'bg-slate-100'
+                      }`}>
                         {b.foto ? (
                           <img src={b.foto} alt="" className="w-full h-full object-cover"/>
                         ) : (
-                          <Package2 size={20} className="text-slate-300"/>
+                          <Package2 size={20} className={isExterno ? 'text-amber-300' : 'text-slate-300'}/>
+                        )}
+                        {isExterno && (
+                          <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-amber-500 text-white grid place-items-center" title="Produto externo">
+                            <Wrench size={9}/>
+                          </div>
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -170,7 +249,7 @@ export default function Parametros() {
           {!selecionado ? (
             <div className="card p-10 text-center text-slate-500">
               <Settings2 size={36} className="mx-auto mb-3 text-slate-300"/>
-              <div className="font-medium text-slate-700 mb-1">Selecione um brinde</div>
+              <div className="font-medium text-slate-700 mb-1">Selecione um item</div>
               <div className="text-xs">Use a lista à esquerda para ver e editar os parâmetros de gravação.</div>
             </div>
           ) : (
@@ -186,11 +265,16 @@ export default function Parametros() {
                   >
                     <ArrowLeft size={18}/>
                   </button>
-                  <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-lg bg-slate-100 flex-shrink-0 overflow-hidden grid place-items-center">
+                  <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-lg bg-slate-100 flex-shrink-0 overflow-hidden grid place-items-center relative">
                     {selecionado.foto ? (
                       <img src={selecionado.foto} alt="" className="w-full h-full object-cover"/>
                     ) : (
                       <Package2 size={48} className="text-slate-300"/>
+                    )}
+                    {selecionado._tipo === 'gravacao' && (
+                      <div className="absolute top-1 right-1 bg-amber-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full flex items-center gap-1">
+                        <Wrench size={9}/> Externo
+                      </div>
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -223,6 +307,16 @@ export default function Parametros() {
                     >
                       <Plus size={12}/> Adicionar
                     </button>
+                    {selecionado._tipo === 'gravacao' && (
+                      <button
+                        type="button"
+                        className="btn-outline border-slate-300 text-slate-700 hover:bg-slate-50 text-xs px-3 py-1.5"
+                        onClick={() => setModalProduto(selecionado)}
+                        title="Editar nome/foto/código do produto"
+                      >
+                        <Edit2 size={12}/> Editar
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -242,7 +336,6 @@ export default function Parametros() {
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {/* Datalists compartilhados: sugestões com possibilidade de digitar livre */}
                   <datalist id="parametros-angulos">
                     <option value="0°" />
                     <option value="45°" />
@@ -276,7 +369,7 @@ export default function Parametros() {
                         </button>
                       </div>
 
-                      {/* Linha 1: TIPO sozinho */}
+                      {/* Linha 1: TIPO */}
                       <div className="w-[140px]">
                         <label className="label">Tipo</label>
                         <select
@@ -340,6 +433,18 @@ export default function Parametros() {
                           />
                         </div>
                       </div>
+
+                      {/* Linha 4: OBSERVAÇÕES (largura completa pra texto longo) */}
+                      <div>
+                        <label className="label">Observações</label>
+                        <textarea
+                          className="input"
+                          rows={2}
+                          value={p.observacao || ''}
+                          onChange={(e) => setParam(idx, 'observacao', e.target.value)}
+                          placeholder="Tamanho da gravação, qual logo, posição, detalhes…"
+                        />
+                      </div>
                     </div>
                   ))}
 
@@ -367,6 +472,15 @@ export default function Parametros() {
           )}
         </div>
       </div>
+
+      {/* Modal de novo/editar produto de gravação */}
+      <ProdutoGravacaoModal
+        open={!!modalProduto}
+        produto={modalProduto === 'novo' ? null : modalProduto}
+        onClose={() => setModalProduto(null)}
+        onSaved={aoSalvarProduto}
+        onDeleted={aoExcluirProduto}
+      />
     </div>
   );
 }

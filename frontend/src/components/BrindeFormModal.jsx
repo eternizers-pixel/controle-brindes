@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
-  Power, PowerOff, Trash2, Plus, Minus, Search, Loader2, Package2, Settings2, X,
+  Power, PowerOff, Trash2, Plus, Minus, Search, Loader2, Package2,
 } from 'lucide-react';
 import Modal from './Modal';
 import { criarBrinde, atualizarBrinde, excluirBrinde, buscarNoXBZ } from '../api/client';
@@ -8,23 +8,12 @@ import AjusteEstoqueModal from './AjusteEstoqueModal';
 import { useToast } from './Toast';
 import { compressImageFile } from '../utils/imagem';
 
-// Parâmetro de gravação vazio (base para "Adicionar parâmetro")
-const PARAM_VAZIO = () => ({
-  tipo: 'laser',
-  angulo: '',
-  hachura: '',
-  velocidade: '',
-  potencia: '',
-  repeticoes: '',
-});
-
 export default function BrindeFormModal({ open, brinde, onClose, onSaved }) {
   const toast = useToast();
   const isEdit = Boolean(brinde?.id);
   const [form, setForm] = useState({
     nome: '', codigo: '', descricao: '',
     quantidade_estoque: 0, custo_unitario: 0, status: 'ativo',
-    parametros_gravacao: [],
   });
   const [foto, setFoto] = useState(null);
   const [preview, setPreview] = useState(null);
@@ -48,14 +37,12 @@ export default function BrindeFormModal({ open, brinde, onClose, onSaved }) {
         quantidade_estoque: brinde.quantidade_estoque || 0,
         custo_unitario: brinde.custo_unitario || 0,
         status: brinde.status || 'ativo',
-        parametros_gravacao: Array.isArray(brinde.parametros_gravacao) ? brinde.parametros_gravacao : [],
       });
       setPreview(brinde.foto || null);
     } else {
       setForm({
         nome: '', codigo: '', descricao: '',
         quantidade_estoque: 0, custo_unitario: 0, status: 'ativo',
-        parametros_gravacao: [],
       });
       setPreview(null);
     }
@@ -117,28 +104,6 @@ export default function BrindeFormModal({ open, brinde, onClose, onSaved }) {
     }
   };
 
-  // === Parâmetros de gravação ===
-  const setParam = (idx, campo, valor) => {
-    setForm((f) => {
-      const arr = [...(f.parametros_gravacao || [])];
-      arr[idx] = { ...arr[idx], [campo]: valor };
-      return { ...f, parametros_gravacao: arr };
-    });
-  };
-  const addParam = () => {
-    setForm((f) => ({
-      ...f,
-      parametros_gravacao: [...(f.parametros_gravacao || []), PARAM_VAZIO()],
-    }));
-  };
-  const removeParam = (idx) => {
-    setForm((f) => {
-      const arr = [...(f.parametros_gravacao || [])];
-      arr.splice(idx, 1);
-      return { ...f, parametros_gravacao: arr };
-    });
-  };
-
   const submit = async (overrideStatus) => {
     setErr('');
     if (!form.nome.trim()) return setErr('Informe o nome do brinde.');
@@ -153,7 +118,6 @@ export default function BrindeFormModal({ open, brinde, onClose, onSaved }) {
         custo_unitario: Number(form.custo_unitario) || 0,
         status: overrideStatus || form.status,
         foto: foto !== null ? foto : (isEdit ? undefined : preview),
-        parametros_gravacao: form.parametros_gravacao || [],
       };
       if (!isEdit) payload.quantidade_estoque = Number(form.quantidade_estoque) || 0;
 
@@ -379,70 +343,6 @@ export default function BrindeFormModal({ open, brinde, onClose, onSaved }) {
             </div>
           )}
 
-          {/* Parâmetros de gravação */}
-          <div className="mt-2 p-3 bg-indigo-50 rounded-lg border border-indigo-200 space-y-2">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-1.5 text-xs font-semibold text-indigo-900">
-                <Settings2 size={14}/> Parâmetros de gravação
-              </div>
-              <button
-                type="button"
-                className="btn-outline border-indigo-300 text-indigo-800 hover:bg-indigo-100 text-xs px-2 py-1"
-                onClick={addParam}
-              >
-                <Plus size={12}/> Adicionar parâmetro
-              </button>
-            </div>
-
-            {(!form.parametros_gravacao || form.parametros_gravacao.length === 0) ? (
-              <div className="text-[11px] text-indigo-700 italic">
-                Nenhum parâmetro definido. Clique em "Adicionar parâmetro" para configurar.
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {form.parametros_gravacao.map((p, idx) => (
-                  <div key={idx} className="bg-white rounded-lg border border-indigo-200 p-2 space-y-2 relative">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="text-[10px] font-bold uppercase text-indigo-700">
-                        Parâmetro {idx + 1}
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => removeParam(idx)}
-                        className="text-rose-600 hover:text-rose-800 p-0.5"
-                        title="Remover este parâmetro"
-                      >
-                        <X size={14}/>
-                      </button>
-                    </div>
-
-                    {/* Tipo - largura total */}
-                    <div>
-                      <label className="text-[10px] uppercase font-semibold text-slate-500 mb-0.5 block">Tipo</label>
-                      <select
-                        className="input text-sm py-1.5"
-                        value={p.tipo || 'laser'}
-                        onChange={(e) => setParam(idx, 'tipo', e.target.value)}
-                      >
-                        <option value="laser">Laser</option>
-                        <option value="CO2">CO2</option>
-                      </select>
-                    </div>
-
-                    {/* Grid de campos */}
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                      <ParamCampo label="Ângulo (°)" value={p.angulo} onChange={(v) => setParam(idx, 'angulo', v)} />
-                      <ParamCampo label="Hachura" value={p.hachura} onChange={(v) => setParam(idx, 'hachura', v)} />
-                      <ParamCampo label="Velocidade" value={p.velocidade} onChange={(v) => setParam(idx, 'velocidade', v)} />
-                      <ParamCampo label="Potência" value={p.potencia} onChange={(v) => setParam(idx, 'potencia', v)} />
-                      <ParamCampo label="Repetições" value={p.repeticoes} onChange={(v) => setParam(idx, 'repeticoes', v)} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
           {err && <div className="text-rose-600 text-sm">{err}</div>}
         </div>
       </Modal>
@@ -465,15 +365,3 @@ export default function BrindeFormModal({ open, brinde, onClose, onSaved }) {
   );
 }
 
-function ParamCampo({ label, value, onChange }) {
-  return (
-    <div>
-      <label className="text-[10px] uppercase font-semibold text-slate-500 mb-0.5 block">{label}</label>
-      <input
-        className="input text-sm py-1.5"
-        value={value || ''}
-        onChange={(e) => onChange(e.target.value)}
-      />
-    </div>
-  );
-}

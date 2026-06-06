@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Search, Send, Package2, X } from 'lucide-react';
 import { getBrindes } from '../api/client';
-import { formatInt, FAIXAS_CUSTO, getFaixaCusto, getFaixaByKey } from '../utils/helpers';
+import { formatInt, FAIXAS_CUSTO, getFaixaByKey } from '../utils/helpers';
 import SaidaModal from '../components/SaidaModal';
 
 const ORDENACOES = [
@@ -155,7 +155,6 @@ export default function Estoque() {
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
           {brindesFiltrados.map((b) => {
             const sem = b.quantidade_estoque <= 0;
-            const faixa = getFaixaCusto(b.custo_unitario);
             return (
               <button
                 key={b.id}
@@ -173,11 +172,6 @@ export default function Estoque() {
                   ) : (
                     <div className="w-full h-full grid place-items-center text-slate-300">
                       <Package2 size={56} />
-                    </div>
-                  )}
-                  {faixa && (
-                    <div className="absolute top-2 right-2">
-                      <span className={`badge ${faixa.badge} shadow-sm`}>{faixa.label}</span>
                     </div>
                   )}
                 </div>

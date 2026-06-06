@@ -106,7 +106,7 @@ export default function Parametros() {
 
       <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
         {/* Lista de brindes (esquerda) */}
-        <div className={`md:col-span-4 lg:col-span-4 ${selecionado ? 'hidden md:block' : ''}`}>
+        <div className={`md:col-span-5 lg:col-span-5 ${selecionado ? 'hidden md:block' : ''}`}>
           <div className="card p-3 sticky top-4">
             <div className="relative mb-2">
               <Search className="absolute left-3 top-2.5 text-slate-400" size={16}/>
@@ -147,12 +147,12 @@ export default function Parametros() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-semibold text-slate-800 truncate">{b.nome}</div>
-                        <div className="text-[10px] text-slate-500 flex items-center gap-1.5">
+                        <div className="text-[10px] text-slate-500 flex items-center gap-1.5 flex-wrap">
                           {b.codigo && <span className="truncate">{b.codigo}</span>}
                           {temParams && (
-                            <span className="badge bg-indigo-100 text-indigo-700 text-[9px] px-1.5 py-0">
-                              <Check size={9} className="mr-0.5"/>
-                              {b.parametros_gravacao.length} param
+                            <span className="badge bg-indigo-100 text-indigo-700 text-[10px] px-1.5 py-0 flex-shrink-0">
+                              <Check size={10} className="mr-0.5"/>
+                              {b.parametros_gravacao.length} {b.parametros_gravacao.length === 1 ? 'parâmetro' : 'parâmetros'}
                             </span>
                           )}
                         </div>
@@ -166,7 +166,7 @@ export default function Parametros() {
         </div>
 
         {/* Painel de detalhes + editor (direita) */}
-        <div className={`md:col-span-8 lg:col-span-8 ${!selecionado ? 'hidden md:block' : ''}`}>
+        <div className={`md:col-span-7 lg:col-span-7 ${!selecionado ? 'hidden md:block' : ''}`}>
           {!selecionado ? (
             <div className="card p-10 text-center text-slate-500">
               <Settings2 size={36} className="mx-auto mb-3 text-slate-300"/>

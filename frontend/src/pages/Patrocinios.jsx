@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Plus, Search, HandCoins, Calendar, LineChart, X } from 'lucide-react';
+import { Plus, Search, HandCoins, Calendar, LineChart, X, Filter } from 'lucide-react';
 import { getPatrocinios } from '../api/client';
 import {
   formatBRL, formatDate, labelRecorrencia, valorMensalPatrocinio, calcularInvestimentos,
@@ -17,6 +17,7 @@ export default function Patrocinios() {
   const [loading, setLoading] = useState(true);
   const [editFor, setEditFor] = useState(null);
   const [novoOpen, setNovoOpen] = useState(false);
+  const [mostrarFiltros, setMostrarFiltros] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -127,60 +128,77 @@ export default function Patrocinios() {
       </div>
 
       <div className="card p-3 space-y-2">
-        <div className="flex flex-col sm:flex-row gap-2">
+        <div className="flex gap-2">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-2.5 text-slate-400" size={16} />
             <input className="input pl-9" placeholder="Pesquisar patrocinado…"
                    value={busca} onChange={(e) => setBusca(e.target.value)} />
           </div>
-          <input
-            type="month"
-            className="input sm:w-40"
-            value={filtroMes}
-            onChange={(e) => setFiltroMes(e.target.value)}
-            title="Filtrar por mês"
-          />
+          <button
+            type="button"
+            className={`btn-outline text-sm flex-shrink-0 sm:hidden ${algumFiltroAtivo ? 'border-brand-400 text-brand-700 bg-brand-50' : ''}`}
+            onClick={() => setMostrarFiltros((v) => !v)}
+          >
+            <Filter size={14}/>
+            Filtros
+            {algumFiltroAtivo && (
+              <span className="ml-1 inline-flex items-center justify-center bg-brand-600 text-white text-[10px] font-bold rounded-full w-4 h-4">!</span>
+            )}
+          </button>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-          <select
-            className="input"
-            value={filtroForma}
-            onChange={(e) => setFiltroForma(e.target.value)}
-            title="Filtrar por forma de pagamento"
-          >
-            <option value="">Forma de pagamento (todas)</option>
-            {FORMAS_PAGAMENTO.map((f) => (
-              <option key={f.value} value={f.value}>{f.label}</option>
-            ))}
-          </select>
-          <select
-            className="input"
-            value={filtroCategoria}
-            onChange={(e) => setFiltroCategoria(e.target.value)}
-            title="Filtrar por categoria"
-            disabled={categoriasDisponiveis.length === 0}
-          >
-            <option value="">
-              {categoriasDisponiveis.length === 0
-                ? 'Categoria (nenhuma cadastrada)'
-                : 'Categoria (todas)'}
-            </option>
-            {categoriasDisponiveis.map((c) => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </select>
-          <select
-            className="input"
-            value={filtroRecorrencia}
-            onChange={(e) => setFiltroRecorrencia(e.target.value)}
-            title="Filtrar por recorrência"
-          >
-            <option value="">Recorrência (todas)</option>
-            {RECORRENCIAS.map((r) => (
-              <option key={r.value} value={r.value}>{r.label}</option>
-            ))}
-          </select>
+
+        {/* Filtros — sempre visíveis no desktop, colapsáveis no mobile */}
+        <div className={`${mostrarFiltros ? '' : 'hidden'} sm:block space-y-2`}>
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+            <input
+              type="month"
+              className="input"
+              value={filtroMes}
+              onChange={(e) => setFiltroMes(e.target.value)}
+              title="Filtrar por mês"
+              placeholder="Mês"
+            />
+            <select
+              className="input"
+              value={filtroForma}
+              onChange={(e) => setFiltroForma(e.target.value)}
+              title="Filtrar por forma de pagamento"
+            >
+              <option value="">Forma de pagamento (todas)</option>
+              {FORMAS_PAGAMENTO.map((f) => (
+                <option key={f.value} value={f.value}>{f.label}</option>
+              ))}
+            </select>
+            <select
+              className="input"
+              value={filtroCategoria}
+              onChange={(e) => setFiltroCategoria(e.target.value)}
+              title="Filtrar por categoria"
+              disabled={categoriasDisponiveis.length === 0}
+            >
+              <option value="">
+                {categoriasDisponiveis.length === 0
+                  ? 'Categoria (nenhuma cadastrada)'
+                  : 'Categoria (todas)'}
+              </option>
+              {categoriasDisponiveis.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+            <select
+              className="input"
+              value={filtroRecorrencia}
+              onChange={(e) => setFiltroRecorrencia(e.target.value)}
+              title="Filtrar por recorrência"
+            >
+              <option value="">Recorrência (todas)</option>
+              {RECORRENCIAS.map((r) => (
+                <option key={r.value} value={r.value}>{r.label}</option>
+              ))}
+            </select>
+          </div>
         </div>
+
         {algumFiltroAtivo && (
           <div className="flex items-center justify-between gap-3 pt-1 border-t border-slate-100">
             <span className="text-xs text-slate-600">

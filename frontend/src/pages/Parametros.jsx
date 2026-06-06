@@ -402,13 +402,13 @@ export default function Parametros() {
                           : 'bg-white border-transparent hover:bg-slate-50 hover:border-slate-200'
                       }`}
                     >
-                      <div className={`w-10 h-10 rounded flex-shrink-0 overflow-hidden grid place-items-center relative ${
+                      <div className={`w-16 h-16 sm:w-12 sm:h-12 rounded-lg flex-shrink-0 overflow-hidden grid place-items-center relative ${
                         isExterno ? 'bg-amber-50' : 'bg-slate-100'
                       }`}>
                         {b.foto ? (
                           <img src={b.foto} alt="" className="w-full h-full object-cover"/>
                         ) : (
-                          <Package2 size={20} className={isExterno ? 'text-amber-300' : 'text-slate-300'}/>
+                          <Package2 size={28} className={isExterno ? 'text-amber-300' : 'text-slate-300'}/>
                         )}
                         {isExterno && (
                           <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-amber-500 text-white grid place-items-center" title="Produto externo">

@@ -1,12 +1,13 @@
 import { NavLink, Outlet, Link } from 'react-router-dom';
 import {
-  Home as HomeIcon, Package, History, FileText, Gift, Send, BarChart3, HandCoins, Search,
+  Home as HomeIcon, Package, History, FileText, Gift, Send, BarChart3, HandCoins, Search, Settings2,
 } from 'lucide-react';
 
 const links = [
   { to: '/',              label: 'Início',              mobile: 'Início',    icon: HomeIcon },
   { to: '/entregar',      label: 'Entregar Brinde',     mobile: 'Entregar',  icon: Send },
   { to: '/brindes',       label: 'Cadastro de Brindes', mobile: 'Brindes',   icon: Package },
+  { to: '/parametros',    label: 'Parâmetros',          mobile: 'Param.',    icon: Settings2 },
   { to: '/patrocinios',   label: 'Patrocínios',         mobile: 'Patroc.',   icon: HandCoins },
   { to: '/dashboard',     label: 'Dashboard',           mobile: 'Dashboard', icon: BarChart3 },
   { to: '/movimentacoes', label: 'Histórico',           mobile: 'Histórico', icon: History },

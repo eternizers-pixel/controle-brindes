@@ -12,6 +12,9 @@ import {
 } from '../api/client';
 import { useToast } from '../components/Toast';
 import ProdutoGravacaoModal from '../components/ProdutoGravacaoModal';
+import { compressImageFile, compressImageDataURL, dataUrlBytes } from '../utils/imagem';
+
+const FOTO_GRANDE_THRESHOLD = 400 * 1024; // 400KB
 
 const PARAM_VAZIO = () => ({
   titulo: '',
@@ -64,13 +67,47 @@ export default function Parametros() {
     });
   }, [itens, busca, filtroTipo]);
 
-  const selecionar = (b) => {
+  const selecionar = async (b) => {
     if (dirty) {
       if (!window.confirm('Você tem alterações não salvas. Trocar de item mesmo assim?')) return;
     }
     setSelecionado(b);
-    setParams(Array.isArray(b.parametros_gravacao) ? [...b.parametros_gravacao] : []);
+    const iniciais = Array.isArray(b.parametros_gravacao) ? [...b.parametros_gravacao] : [];
+    setParams(iniciais);
     setDirty(false);
+
+    // Auto-otimização: se algum parâmetro tem foto grande salva no banco,
+    // comprime em background e salva a versão menor.
+    // Evita que o próximo save normal estoure o statement_timeout do Supabase.
+    const temGrande = iniciais.some((p) => p.foto && dataUrlBytes(p.foto) > FOTO_GRANDE_THRESHOLD);
+    if (!temGrande) return;
+    try {
+      const otimizados = await Promise.all(iniciais.map(async (p) => {
+        if (p.foto && dataUrlBytes(p.foto) > FOTO_GRANDE_THRESHOLD) {
+          try {
+            const small = await compressImageDataURL(p.foto);
+            return { ...p, foto: small };
+          } catch {
+            return p;
+          }
+        }
+        return p;
+      }));
+      const fn = b._tipo === 'gravacao' ? atualizarProdutoGravacao : atualizarBrinde;
+      await fn(b.id, { parametros_gravacao: otimizados });
+      // Atualiza estado local sem marcar dirty (foi automático)
+      setParams(otimizados);
+      setItens((lista) =>
+        lista.map((x) => (x.id === b.id && x._tipo === b._tipo)
+          ? { ...x, parametros_gravacao: otimizados }
+          : x)
+      );
+      setSelecionado((s) => ({ ...s, parametros_gravacao: otimizados }));
+      toast.success('Fotos antigas otimizadas pra carregar mais rápido.');
+    } catch (e) {
+      // Falha silenciosa — o usuário pode tentar salvar manualmente
+      console.warn('Falha ao otimizar fotos antigas:', e);
+    }
   };
 
   const setParam = (idx, campo, valor) => {
@@ -492,12 +529,17 @@ export default function Parametros() {
                                 type="file"
                                 accept="image/*"
                                 className="hidden"
-                                onChange={(e) => {
+                                onChange={async (e) => {
                                   const f = e.target.files?.[0];
                                   if (!f) return;
-                                  const reader = new FileReader();
-                                  reader.onload = () => setParam(idx, 'foto', reader.result);
-                                  reader.readAsDataURL(f);
+                                  try {
+                                    const dataUrl = await compressImageFile(f);
+                                    setParam(idx, 'foto', dataUrl);
+                                  } catch (err) {
+                                    toast.error(err.message || 'Erro ao processar a imagem.');
+                                  } finally {
+                                    e.target.value = '';
+                                  }
                                 }}
                               />
                             </label>

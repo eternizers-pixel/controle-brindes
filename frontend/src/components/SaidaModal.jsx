@@ -90,7 +90,12 @@ export default function SaidaModal({ open, brinde, onClose, onSaved }) {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label className="label">Data da entrega</label>
-          <input className="input" type="date" value={form.data} onChange={set('data')} autoFocus />
+          <input
+            className="input max-w-[160px]"
+            type="date"
+            value={form.data}
+            onChange={set('data')}
+          />
         </div>
         <div>
           <label className="label">Tipo de solicitante</label>

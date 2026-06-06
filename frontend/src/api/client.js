@@ -77,6 +77,7 @@ export async function criarBrinde(payload) {
   const {
     nome, descricao, foto, categoria_id, codigo,
     quantidade_estoque = 0, estoque_minimo = 5, custo_unitario = 0, status = 'ativo',
+    parametros_gravacao = [],
   } = payload;
 
   const novo = await handle(supabase.from('brindes').insert({
@@ -89,6 +90,7 @@ export async function criarBrinde(payload) {
     estoque_minimo: Number(estoque_minimo),
     custo_unitario: Number(custo_unitario),
     status,
+    parametros_gravacao: Array.isArray(parametros_gravacao) ? parametros_gravacao : [],
   }).select().single());
 
   // Se já tem estoque inicial, registra como movimentação de entrada
@@ -110,6 +112,9 @@ export async function atualizarBrinde(id, payload) {
   delete patch.quantidade_estoque;  // só via movimentações
   if ('categoria_id' in patch) patch.categoria_id = patch.categoria_id || null;
   if ('codigo' in patch) patch.codigo = (patch.codigo && String(patch.codigo).trim()) || null;
+  if ('parametros_gravacao' in patch) {
+    patch.parametros_gravacao = Array.isArray(patch.parametros_gravacao) ? patch.parametros_gravacao : [];
+  }
   patch.atualizado_em = new Date().toISOString();
   return await handle(
     supabase.from('brindes').update(patch).eq('id', id).select().single()

@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import {
   ArrowDownCircle, ArrowUpCircle, Filter, Trash2, MessageSquare, X, Calendar,
-  Package, Users, Tag, DollarSign,
+  Package, Users, Tag, DollarSign, Edit2, Save,
 } from 'lucide-react';
-import { getMovimentacoes, getBrindes, removerMovimentacao } from '../api/client';
+import { getMovimentacoes, getBrindes, removerMovimentacao, atualizarMovimentacao } from '../api/client';
 import { formatBRL, formatInt, formatDate, labelTipo, TIPOS_SOLICITANTE } from '../utils/helpers';
 import Modal from '../components/Modal';
 import { useToast } from '../components/Toast';
@@ -18,6 +18,12 @@ export default function Movimentacoes() {
   });
   const [detalheFor, setDetalheFor] = useState(null);
   const [mostrarFiltros, setMostrarFiltros] = useState(false);
+  // Estado de edição da movimentação atual
+  const [editando, setEditando] = useState(false);
+  const [formEdit, setFormEdit] = useState({
+    data: '', destinatario_nome: '', tipo_solicitante: '', observacao: '',
+  });
+  const [salvandoEdit, setSalvandoEdit] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -45,6 +51,48 @@ export default function Movimentacoes() {
       toast.error(e.message);
     }
   };
+
+  const iniciarEdicao = () => {
+    if (!detalheFor) return;
+    setFormEdit({
+      data: detalheFor.data || '',
+      destinatario_nome: detalheFor.destinatario_nome || '',
+      tipo_solicitante: detalheFor.tipo_solicitante || '',
+      observacao: detalheFor.observacao || '',
+    });
+    setEditando(true);
+  };
+
+  const salvarEdicao = async () => {
+    if (!detalheFor) return;
+    setSalvandoEdit(true);
+    try {
+      const payload = {
+        data: formEdit.data,
+        observacao: formEdit.observacao,
+      };
+      if (detalheFor.tipo === 'saida') {
+        payload.destinatario_nome = formEdit.destinatario_nome;
+        payload.tipo_solicitante = formEdit.tipo_solicitante;
+      }
+      const atualizada = await atualizarMovimentacao(detalheFor.id, payload);
+      toast.success('Movimentação atualizada.');
+      setDetalheFor((d) => d ? { ...d, ...atualizada } : d);
+      setEditando(false);
+      load();
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setSalvandoEdit(false);
+    }
+  };
+
+  const fecharDetalhes = () => {
+    setDetalheFor(null);
+    setEditando(false);
+  };
+
+  const setEdit = (k) => (e) => setFormEdit({ ...formEdit, [k]: e.target.value });
 
   const filtroAtivo = Object.values(filtros).some((v) => v);
 
@@ -171,31 +219,60 @@ export default function Movimentacoes() {
       {/* Modal de detalhes */}
       <Modal
         open={!!detalheFor}
-        onClose={() => setDetalheFor(null)}
+        onClose={fecharDetalhes}
         size="md"
-        title="Detalhes da movimentação"
+        title={editando ? 'Editar movimentação' : 'Detalhes da movimentação'}
         footer={
-          <div className="w-full flex items-center gap-2 flex-nowrap">
-            <button
-              type="button"
-              className="btn-outline text-rose-700 border-rose-300 hover:bg-rose-50 text-xs px-2 py-1.5"
-              onClick={() => detalheFor && estornar(detalheFor)}
-            >
-              <Trash2 size={12}/> Estornar
-            </button>
-            <span className="flex-1"/>
-            <button
-              className="btn-primary text-xs px-3 py-1.5"
-              onClick={() => setDetalheFor(null)}
-            >
-              Fechar
-            </button>
-          </div>
+          editando ? (
+            <div className="w-full flex items-center gap-2 flex-nowrap">
+              <button
+                type="button"
+                className="btn-ghost text-xs px-2 py-1.5"
+                onClick={() => setEditando(false)}
+                disabled={salvandoEdit}
+              >
+                Cancelar
+              </button>
+              <span className="flex-1"/>
+              <button
+                type="button"
+                className="btn-primary text-xs px-3 py-1.5"
+                onClick={salvarEdicao}
+                disabled={salvandoEdit}
+              >
+                <Save size={12}/> {salvandoEdit ? 'Salvando…' : 'Salvar'}
+              </button>
+            </div>
+          ) : (
+            <div className="w-full flex items-center gap-2 flex-nowrap">
+              <button
+                type="button"
+                className="btn-outline text-rose-700 border-rose-300 hover:bg-rose-50 text-xs px-2 py-1.5"
+                onClick={() => detalheFor && estornar(detalheFor)}
+              >
+                <Trash2 size={12}/> Estornar
+              </button>
+              <button
+                type="button"
+                className="btn-outline border-sky-300 text-sky-700 hover:bg-sky-50 text-xs px-2 py-1.5"
+                onClick={iniciarEdicao}
+              >
+                <Edit2 size={12}/> Editar
+              </button>
+              <span className="flex-1"/>
+              <button
+                className="btn-primary text-xs px-3 py-1.5"
+                onClick={fecharDetalhes}
+              >
+                Fechar
+              </button>
+            </div>
+          )
         }
       >
         {detalheFor && (
           <div className="space-y-3">
-            {/* Header colorido com tipo e quantidade */}
+            {/* Header colorido com tipo e quantidade — sempre visível, mesmo editando */}
             <div className={`p-3 rounded-lg ${detalheFor.tipo === 'saida' ? 'bg-rose-50 border border-rose-100' : 'bg-emerald-50 border border-emerald-100'}`}>
               <div className="flex items-center justify-between gap-2">
                 <span className={`badge ${detalheFor.tipo === 'saida' ? 'bg-rose-200 text-rose-800' : 'bg-emerald-200 text-emerald-800'}`}>
@@ -212,72 +289,130 @@ export default function Movimentacoes() {
                   </span>
                 </span>
               </div>
+              <div className="text-[11px] text-slate-600 mt-1.5">
+                <strong>{detalheFor.brinde_nome}</strong>
+              </div>
             </div>
 
-            {/* Informações em grid */}
-            <div className="grid grid-cols-2 gap-x-3 gap-y-3">
-              <DetalheCampo
-                icon={Package}
-                label="Brinde"
-                value={detalheFor.brinde_nome}
-                colSpan={2}
-              />
-              <DetalheCampo
-                icon={Calendar}
-                label="Data"
-                value={formatDate(detalheFor.data)}
-              />
-              {Number(detalheFor.custo_total) > 0 && (
-                <DetalheCampo
-                  icon={DollarSign}
-                  label="Custo total"
-                  value={formatBRL(detalheFor.custo_total)}
-                />
-              )}
-              {Number(detalheFor.custo_unitario) > 0 && (
-                <DetalheCampo
-                  label="Custo unitário"
-                  value={formatBRL(detalheFor.custo_unitario)}
-                />
-              )}
-
-              {detalheFor.tipo === 'saida' && (
-                <>
-                  <DetalheCampo
-                    icon={Users}
-                    label="Destinatário"
-                    value={detalheFor.destinatario_nome || '—'}
-                    colSpan={2}
-                  />
-                  <DetalheCampo
-                    icon={Tag}
-                    label="Tipo solicitante"
-                    value={labelTipo(detalheFor.tipo_solicitante) || '—'}
-                    colSpan={2}
-                  />
-                </>
-              )}
-              {detalheFor.responsavel && (
-                <DetalheCampo
-                  label="Responsável"
-                  value={detalheFor.responsavel}
-                  colSpan={2}
-                />
-              )}
-            </div>
-
-            {/* Observação destacada */}
-            {detalheFor.observacao ? (
-              <div>
-                <div className="flex items-center gap-1.5 text-xs uppercase font-semibold text-slate-500 mb-1.5">
-                  <MessageSquare size={12}/> Observação
+            {editando ? (
+              /* MODO EDIÇÃO */
+              <div className="space-y-3">
+                <div className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded p-2">
+                  Só é possível editar data, destinatário, tipo de solicitante e observação.
+                  A quantidade não pode ser alterada — pra isso, estorne e registre uma nova entrega.
                 </div>
-                <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-slate-800 whitespace-pre-wrap">
-                  {detalheFor.observacao}
+
+                <div>
+                  <label className="label">Data</label>
+                  <input
+                    className="input"
+                    type="date"
+                    value={formEdit.data}
+                    onChange={setEdit('data')}
+                    autoFocus
+                  />
+                </div>
+
+                {detalheFor.tipo === 'saida' && (
+                  <>
+                    <div>
+                      <label className="label">Para quem foi (destinatário)</label>
+                      <input
+                        className="input"
+                        value={formEdit.destinatario_nome}
+                        onChange={setEdit('destinatario_nome')}
+                        placeholder="Escola, comunidade, evento…"
+                      />
+                    </div>
+                    <div>
+                      <label className="label">Tipo de solicitante</label>
+                      <select
+                        className="input"
+                        value={formEdit.tipo_solicitante}
+                        onChange={setEdit('tipo_solicitante')}
+                      >
+                        <option value="">— não informado —</option>
+                        {TIPOS_SOLICITANTE.map((t) => (
+                          <option key={t.value} value={t.value}>{t.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </>
+                )}
+
+                <div>
+                  <label className="label">Observação</label>
+                  <textarea
+                    className="input"
+                    rows={3}
+                    value={formEdit.observacao}
+                    onChange={setEdit('observacao')}
+                  />
                 </div>
               </div>
             ) : (
-              <div className="text-xs text-slate-400 italic">Sem observação registrada.</div>
+              /* MODO VISUALIZAÇÃO */
+              <>
+                {/* Informações em grid */}
+                <div className="grid grid-cols-2 gap-x-3 gap-y-3">
+                  <DetalheCampo
+                    icon={Calendar}
+                    label="Data"
+                    value={formatDate(detalheFor.data)}
+                  />
+                  {Number(detalheFor.custo_total) > 0 && (
+                    <DetalheCampo
+                      icon={DollarSign}
+                      label="Custo total"
+                      value={formatBRL(detalheFor.custo_total)}
+                    />
+                  )}
+                  {Number(detalheFor.custo_unitario) > 0 && (
+                    <DetalheCampo
+                      label="Custo unitário"
+                      value={formatBRL(detalheFor.custo_unitario)}
+                    />
+                  )}
+
+                  {detalheFor.tipo === 'saida' && (
+                    <>
+                      <DetalheCampo
+                        icon={Users}
+                        label="Destinatário"
+                        value={detalheFor.destinatario_nome || '—'}
+                        colSpan={2}
+                      />
+                      <DetalheCampo
+                        icon={Tag}
+                        label="Tipo solicitante"
+                        value={labelTipo(detalheFor.tipo_solicitante) || '—'}
+                        colSpan={2}
+                      />
+                    </>
+                  )}
+                  {detalheFor.responsavel && (
+                    <DetalheCampo
+                      label="Responsável"
+                      value={detalheFor.responsavel}
+                      colSpan={2}
+                    />
+                  )}
+                </div>
+
+                {/* Observação destacada */}
+                {detalheFor.observacao ? (
+                  <div>
+                    <div className="flex items-center gap-1.5 text-xs uppercase font-semibold text-slate-500 mb-1.5">
+                      <MessageSquare size={12}/> Observação
+                    </div>
+                    <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-slate-800 whitespace-pre-wrap">
+                      {detalheFor.observacao}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-xs text-slate-400 italic">Sem observação registrada.</div>
+                )}
+              </>
             )}
           </div>
         )}

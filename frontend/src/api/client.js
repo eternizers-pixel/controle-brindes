@@ -185,6 +185,18 @@ export async function registrarSaida(d) {
 export const removerMovimentacao = (id) =>
   handle(supabase.rpc('estornar_movimentacao', { p_id: id }));
 
+// Atualiza campos editáveis de uma movimentação (sem mexer em estoque).
+// Permite corrigir data, destinatário, tipo_solicitante e observação.
+export async function atualizarMovimentacao(id, payload) {
+  const clean = (v) => (v && String(v).trim()) || null;
+  const patch = {};
+  if ('data' in payload)               patch.data = payload.data;
+  if ('destinatario_nome' in payload)  patch.destinatario_nome = clean(payload.destinatario_nome);
+  if ('tipo_solicitante' in payload)   patch.tipo_solicitante = clean(payload.tipo_solicitante);
+  if ('observacao' in payload)         patch.observacao = clean(payload.observacao);
+  return await handle(supabase.from('movimentacoes').update(patch).eq('id', id).select().single());
+}
+
 /* ===================================================================
    PRODUTOS DE GRAVAÇÃO (itens que não são brindes — só pra parâmetros)
 =================================================================== */

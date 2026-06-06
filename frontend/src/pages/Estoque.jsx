@@ -1,7 +1,7 @@
 // Tela "Entregar Brinde" — fluxo simples para dar baixa em brindes
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Search, Send, Package2, X, Minus } from 'lucide-react';
+import { Search, Send, Package2, X } from 'lucide-react';
 import { getBrindes } from '../api/client';
 import { formatInt, FAIXAS_CUSTO, getFaixaByKey } from '../utils/helpers';
 import SaidaModal from '../components/SaidaModal';
@@ -162,7 +162,9 @@ export default function Estoque() {
                 onClick={() => !sem && setSaidaFor(b)}
                 disabled={sem}
                 className={`card overflow-hidden text-left flex flex-col transition-all group ${
-                  sem ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-soft active:scale-[.99] hover:border-rose-200'
+                  sem
+                    ? 'opacity-50 cursor-not-allowed'
+                    : 'hover:shadow-lg hover:border-rose-500 hover:ring-2 hover:ring-rose-300 hover:-translate-y-0.5 active:scale-[.98]'
                 }`}
               >
                 {/* Foto grande - destaque principal */}
@@ -184,18 +186,11 @@ export default function Estoque() {
                   {b.codigo && (
                     <div className="text-[11px] text-slate-500">cód. {b.codigo}</div>
                   )}
-                  <div className="text-xs text-slate-500 mt-auto pt-1 flex items-center justify-between gap-1">
-                    <span>
-                      Estoque{' '}
-                      <span className={`font-bold ${sem ? 'text-rose-600' : 'text-slate-800'}`}>
-                        {formatInt(b.quantidade_estoque)}
-                      </span>
+                  <div className="text-xs text-slate-500 mt-auto pt-1 flex items-baseline justify-between">
+                    <span>Estoque</span>
+                    <span className={`text-base font-bold ${sem ? 'text-rose-600' : 'text-slate-800'}`}>
+                      {formatInt(b.quantidade_estoque)}
                     </span>
-                    {!sem && (
-                      <span className="inline-flex items-center gap-1 bg-rose-500 text-white text-xs font-bold rounded-full px-2.5 py-1 group-hover:bg-rose-600 transition-colors shadow-sm">
-                        <Minus size={12} strokeWidth={3}/> 1
-                      </span>
-                    )}
                   </div>
                 </div>
               </button>

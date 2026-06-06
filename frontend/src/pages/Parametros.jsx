@@ -13,8 +13,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   Search, Package2, Settings2, Plus, X, Save, ArrowLeft, Check, Wrench, Edit2,
-  Camera,
+  Camera, Copy,
 } from 'lucide-react';
+import Modal from '../components/Modal';
 import {
   getBrindes, atualizarBrinde,
   getProdutosGravacao, atualizarProdutoGravacao,
@@ -93,6 +94,7 @@ export default function Parametros() {
   const [salvando, setSalvando] = useState(false);
   const [modalProduto, setModalProduto] = useState(null);
   const [fotoAmpliada, setFotoAmpliada] = useState(null);
+  const [copiarOpen, setCopiarOpen] = useState(false);
 
   // Esc fecha o lightbox
   useEffect(() => {
@@ -232,6 +234,23 @@ export default function Parametros() {
     });
   };
   const isEditing = (idx) => editingSet.has(idx);
+
+  // Copia os parâmetros de outro item pro selecionado.
+  // modo: 'substituir' (descarta os atuais) ou 'adicionar' (concatena no final).
+  const aplicarCopia = (srcItem, modo) => {
+    const srcParams = normalizarLista(srcItem.parametros_gravacao);
+    // Deep clone pra não compartilhar referências
+    const clonados = JSON.parse(JSON.stringify(srcParams));
+    setParams((atuais) => modo === 'substituir' ? clonados : [...atuais, ...clonados]);
+    setDirty(true);
+    setEditingSet(new Set()); // tudo em view mode após copiar — usuário vê o resultado
+    setCopiarOpen(false);
+    toast.success(
+      modo === 'substituir'
+        ? `${clonados.length} parâmetro(s) copiados de "${srcItem.nome}".`
+        : `${clonados.length} parâmetro(s) adicionados de "${srcItem.nome}".`
+    );
+  };
 
   const salvar = async () => {
     if (!selecionado) return;
@@ -452,6 +471,14 @@ export default function Parametros() {
                     >
                       <Plus size={12}/> Adicionar
                     </button>
+                    <button
+                      type="button"
+                      className="btn-outline border-sky-300 text-sky-700 hover:bg-sky-50 text-xs px-3 py-1.5"
+                      onClick={() => setCopiarOpen(true)}
+                      title="Copiar parâmetros de outro produto"
+                    >
+                      <Copy size={12}/> Copiar de…
+                    </button>
                     {selecionado._tipo === 'gravacao' && (
                       <button
                         type="button"
@@ -542,7 +569,187 @@ export default function Parametros() {
       />
 
       <Lightbox src={fotoAmpliada} onClose={() => setFotoAmpliada(null)} />
+
+      <CopiarParametrosModal
+        open={copiarOpen}
+        itens={itens}
+        atual={selecionado}
+        temParamsAtuais={params.length > 0}
+        onClose={() => setCopiarOpen(false)}
+        onCopiar={aplicarCopia}
+      />
     </div>
+  );
+}
+
+// Modal pra escolher um produto fonte e copiar os parâmetros dele pro selecionado.
+function CopiarParametrosModal({ open, itens, atual, temParamsAtuais, onClose, onCopiar }) {
+  const [busca, setBusca] = useState('');
+  const [candidato, setCandidato] = useState(null);
+
+  useEffect(() => {
+    if (!open) { setBusca(''); setCandidato(null); }
+  }, [open]);
+
+  // Só mostra itens que TEM parâmetros configurados, exceto o próprio atual
+  const candidatos = useMemo(() => {
+    const s = busca.trim().toLowerCase();
+    return itens.filter((b) => {
+      if (atual && b.id === atual.id && b._tipo === atual._tipo) return false;
+      const temParams = Array.isArray(b.parametros_gravacao) && b.parametros_gravacao.length > 0;
+      if (!temParams) return false;
+      if (!s) return true;
+      return (b.nome || '').toLowerCase().includes(s) ||
+             (b.codigo || '').toLowerCase().includes(s);
+    });
+  }, [itens, atual, busca]);
+
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      size="md"
+      title="Copiar parâmetros de outro produto"
+      footer={
+        <>
+          <button className="btn-ghost" onClick={onClose}>Cancelar</button>
+        </>
+      }
+    >
+      <div className="space-y-3">
+        {!candidato ? (
+          <>
+            <p className="text-xs text-slate-500">
+              Escolha o produto cujos parâmetros você quer copiar.
+              Só aparecem aqui itens que já tem parâmetros configurados.
+            </p>
+            <div className="relative">
+              <Search className="absolute left-3 top-2.5 text-slate-400" size={16}/>
+              <input
+                className="input pl-9"
+                placeholder="Buscar por nome ou código…"
+                value={busca}
+                onChange={(e) => setBusca(e.target.value)}
+                autoFocus
+              />
+            </div>
+
+            {candidatos.length === 0 ? (
+              <div className="text-slate-500 text-sm py-6 text-center">
+                {busca ? 'Nenhum produto encontrado com esses termos.' : 'Nenhum produto disponível pra copiar ainda.'}
+              </div>
+            ) : (
+              <div className="space-y-1 max-h-72 overflow-y-auto">
+                {candidatos.map((b) => {
+                  const n = b.parametros_gravacao.length;
+                  const isExterno = b._tipo === 'gravacao';
+                  return (
+                    <button
+                      key={`${b._tipo}-${b.id}`}
+                      type="button"
+                      onClick={() => setCandidato(b)}
+                      className="w-full text-left p-2 rounded-lg flex items-center gap-2 bg-white border border-slate-200 hover:bg-sky-50 hover:border-sky-300 transition-colors"
+                    >
+                      <div className={`w-10 h-10 rounded flex-shrink-0 overflow-hidden grid place-items-center ${
+                        isExterno ? 'bg-amber-50' : 'bg-slate-100'
+                      }`}>
+                        {b.foto ? (
+                          <img src={b.foto} alt="" className="w-full h-full object-cover"/>
+                        ) : (
+                          <Package2 size={20} className={isExterno ? 'text-amber-300' : 'text-slate-300'}/>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-semibold text-slate-800 truncate">{b.nome}</div>
+                        <div className="text-[10px] text-slate-500 flex items-center gap-1.5">
+                          {b.codigo && <span className="truncate">{b.codigo}</span>}
+                          <span className="badge bg-indigo-100 text-indigo-700 text-[10px] px-1.5 py-0">
+                            {n} {n === 1 ? 'parâmetro' : 'parâmetros'}
+                          </span>
+                        </div>
+                      </div>
+                      <Copy size={14} className="text-sky-500 flex-shrink-0"/>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </>
+        ) : (
+          // Confirmação: candidato selecionado, escolher modo
+          <div className="space-y-3">
+            <div className="bg-sky-50 border border-sky-200 rounded-lg p-3 flex items-center gap-3">
+              <div className="w-12 h-12 rounded bg-slate-100 overflow-hidden flex-shrink-0 grid place-items-center">
+                {candidato.foto ? (
+                  <img src={candidato.foto} alt="" className="w-full h-full object-cover"/>
+                ) : (
+                  <Package2 size={22} className="text-slate-300"/>
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-semibold text-slate-800 truncate">{candidato.nome}</div>
+                {candidato.codigo && (
+                  <div className="text-[11px] text-slate-500">cód. {candidato.codigo}</div>
+                )}
+                <div className="text-[11px] text-sky-700 mt-0.5">
+                  {candidato.parametros_gravacao.length} {candidato.parametros_gravacao.length === 1 ? 'parâmetro' : 'parâmetros'} a copiar
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCandidato(null)}
+                className="text-slate-500 hover:text-slate-800 text-xs underline flex-shrink-0"
+              >
+                Trocar
+              </button>
+            </div>
+
+            {temParamsAtuais ? (
+              <>
+                <p className="text-sm text-slate-700">
+                  O produto atual já tem parâmetros configurados. Como você quer copiar?
+                </p>
+                <div className="grid gap-2">
+                  <button
+                    type="button"
+                    onClick={() => onCopiar(candidato, 'substituir')}
+                    className="btn bg-rose-600 text-white hover:bg-rose-700 text-sm"
+                  >
+                    <X size={14}/> Substituir tudo
+                    <span className="text-[10px] opacity-80 ml-1">(remove os atuais)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onCopiar(candidato, 'adicionar')}
+                    className="btn-primary text-sm"
+                  >
+                    <Plus size={14}/> Adicionar ao final
+                    <span className="text-[10px] opacity-80 ml-1">(mantém os atuais)</span>
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-slate-700">
+                  Confirma que quer copiar os {candidato.parametros_gravacao.length} parâmetro(s) pra cá?
+                </p>
+                <button
+                  type="button"
+                  onClick={() => onCopiar(candidato, 'substituir')}
+                  className="btn-primary text-sm w-full"
+                >
+                  <Copy size={14}/> Copiar parâmetros
+                </button>
+              </>
+            )}
+
+            <p className="text-[11px] text-slate-500">
+              Você ainda precisa clicar em <strong>Salvar alterações</strong> depois pra persistir no banco.
+            </p>
+          </div>
+        )}
+      </div>
+    </Modal>
   );
 }
 

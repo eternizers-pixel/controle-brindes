@@ -186,6 +186,40 @@ export const removerMovimentacao = (id) =>
   handle(supabase.rpc('estornar_movimentacao', { p_id: id }));
 
 /* ===================================================================
+   PRODUTOS DE GRAVAÇÃO (itens que não são brindes — só pra parâmetros)
+=================================================================== */
+export async function getProdutosGravacao({ search = '' } = {}) {
+  let q = supabase.from('produtos_gravacao').select('*').order('nome');
+  if (search) {
+    const s = String(search).trim().replace(/[,()*%]/g, '');
+    if (s) q = q.or(`nome.ilike.%${s}%,codigo.ilike.%${s}%`);
+  }
+  return (await handle(q)) || [];
+}
+
+export async function criarProdutoGravacao(payload) {
+  return await handle(supabase.from('produtos_gravacao').insert({
+    nome: String(payload.nome || '').trim(),
+    codigo: (payload.codigo && String(payload.codigo).trim()) || null,
+    descricao: payload.descricao || null,
+    foto: payload.foto || null,
+    parametros_gravacao: Array.isArray(payload.parametros_gravacao) ? payload.parametros_gravacao : [],
+  }).select().single());
+}
+
+export async function atualizarProdutoGravacao(id, payload) {
+  const patch = { ...payload, atualizado_em: new Date().toISOString() };
+  if ('codigo' in patch) patch.codigo = (patch.codigo && String(patch.codigo).trim()) || null;
+  if ('parametros_gravacao' in patch) {
+    patch.parametros_gravacao = Array.isArray(patch.parametros_gravacao) ? patch.parametros_gravacao : [];
+  }
+  return await handle(supabase.from('produtos_gravacao').update(patch).eq('id', id).select().single());
+}
+
+export const excluirProdutoGravacao = (id) =>
+  handle(supabase.from('produtos_gravacao').delete().eq('id', id));
+
+/* ===================================================================
    PATROCÍNIOS
 =================================================================== */
 export async function getPatrocinios({ search = '', ativo } = {}) {

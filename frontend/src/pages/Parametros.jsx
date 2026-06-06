@@ -12,8 +12,8 @@
 // Clicar em Salvar (global) persiste e colapsa todos pra visualização.
 import { useEffect, useMemo, useState } from 'react';
 import {
-  Search, Package2, Settings2, Plus, X, Save, ArrowLeft, Check, Wrench, Edit2,
-  Camera, Copy,
+  Search, Package2, Settings2, Plus, X, ArrowLeft, Check, Wrench, Edit2,
+  Camera, Copy, Loader2, CloudOff,
 } from 'lucide-react';
 import Modal from '../components/Modal';
 import {
@@ -91,10 +91,44 @@ export default function Parametros() {
   const [params, setParams] = useState([]);
   const [editingSet, setEditingSet] = useState(() => new Set());
   const [dirty, setDirty] = useState(false);
-  const [salvando, setSalvando] = useState(false);
+  // Status do auto-save: 'idle' | 'salvando' | 'salvo' | 'erro'
+  const [saveStatus, setSaveStatus] = useState('idle');
   const [modalProduto, setModalProduto] = useState(null);
   const [fotoAmpliada, setFotoAmpliada] = useState(null);
   const [copiarOpen, setCopiarOpen] = useState(false);
+
+  // Auto-save com debounce de 1s a cada alteração
+  useEffect(() => {
+    if (!dirty || !selecionado) return;
+    let cancelado = false;
+    const timer = setTimeout(async () => {
+      setSaveStatus('salvando');
+      try {
+        const fn = selecionado._tipo === 'gravacao' ? atualizarProdutoGravacao : atualizarBrinde;
+        await fn(selecionado.id, { parametros_gravacao: params });
+        if (cancelado) return;
+        setItens((lista) =>
+          lista.map((b) => (b.id === selecionado.id && b._tipo === selecionado._tipo)
+            ? { ...b, parametros_gravacao: params }
+            : b)
+        );
+        setSelecionado((s) => s ? { ...s, parametros_gravacao: params } : s);
+        setDirty(false);
+        setSaveStatus('salvo');
+        // Volta pra idle depois de 1.5s
+        setTimeout(() => setSaveStatus((s) => s === 'salvo' ? 'idle' : s), 1500);
+      } catch (e) {
+        if (cancelado) return;
+        setSaveStatus('erro');
+        toast.error('Erro ao salvar: ' + (e.message || 'desconhecido'));
+      }
+    }, 1000);
+    return () => {
+      cancelado = true;
+      clearTimeout(timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dirty, params, selecionado]);
 
   // Esc fecha o lightbox
   useEffect(() => {
@@ -132,8 +166,23 @@ export default function Parametros() {
   }, [itens, busca, filtroTipo]);
 
   const selecionar = async (b) => {
-    if (dirty) {
-      if (!window.confirm('Você tem alterações não salvas. Trocar de item mesmo assim?')) return;
+    // Se tem alteração pendente no item atual, força salvar antes de trocar
+    if (dirty && selecionado) {
+      try {
+        const fn = selecionado._tipo === 'gravacao' ? atualizarProdutoGravacao : atualizarBrinde;
+        await fn(selecionado.id, { parametros_gravacao: params });
+        setItens((lista) =>
+          lista.map((x) => (x.id === selecionado.id && x._tipo === selecionado._tipo)
+            ? { ...x, parametros_gravacao: params }
+            : x)
+        );
+      } catch (e) {
+        const continuar = window.confirm(
+          `Falha ao salvar alterações em "${selecionado.nome}":\n${e.message}\n\nTrocar de item mesmo assim? As alterações pendentes serão perdidas.`
+        );
+        if (!continuar) return;
+      }
+      setDirty(false);
     }
     setSelecionado(b);
     const iniciais = normalizarLista(b.parametros_gravacao);
@@ -252,27 +301,6 @@ export default function Parametros() {
     );
   };
 
-  const salvar = async () => {
-    if (!selecionado) return;
-    setSalvando(true);
-    try {
-      const fn = selecionado._tipo === 'gravacao' ? atualizarProdutoGravacao : atualizarBrinde;
-      await fn(selecionado.id, { parametros_gravacao: params });
-      toast.success(`Parâmetros de "${selecionado.nome}" salvos!`);
-      setDirty(false);
-      setEditingSet(new Set()); // colapsa tudo pra visualização
-      setItens((lista) =>
-        lista.map((b) => (b.id === selecionado.id && b._tipo === selecionado._tipo)
-          ? { ...b, parametros_gravacao: params }
-          : b)
-      );
-      setSelecionado((s) => ({ ...s, parametros_gravacao: params }));
-    } catch (e) {
-      toast.error(e.message);
-    } finally {
-      setSalvando(false);
-    }
-  };
 
   const aoSalvarProduto = (produto) => {
     if (!produto) { load({ silent: true }); return; }
@@ -451,19 +479,9 @@ export default function Parametros() {
                         ? 'Nenhum parâmetro configurado ainda'
                         : `${params.length} parâmetro${params.length > 1 ? 's' : ''} configurado${params.length > 1 ? 's' : ''}`}
                     </div>
-                    {dirty && (
-                      <div className="text-[11px] text-amber-700 mt-1 italic">• Alterações não salvas</div>
-                    )}
+                    <StatusSalvamento dirty={dirty} status={saveStatus} />
                   </div>
                   <div className="flex flex-col gap-1.5 flex-shrink-0">
-                    <button
-                      type="button"
-                      className="btn-primary text-xs px-3 py-1.5"
-                      onClick={salvar}
-                      disabled={!dirty || salvando}
-                    >
-                      <Save size={12}/> {salvando ? 'Salvando…' : 'Salvar'}
-                    </button>
                     <button
                       type="button"
                       className="btn-outline border-indigo-300 text-indigo-700 hover:bg-indigo-50 text-xs px-3 py-1.5"
@@ -535,24 +553,6 @@ export default function Parametros() {
                     />
                   ))}
 
-                  {/* Footer salvar */}
-                  <div className="card p-3 flex items-center justify-between bg-slate-50">
-                    <div className="text-xs text-slate-600">
-                      {dirty ? (
-                        <span className="text-amber-700 font-medium">• Alterações não salvas</span>
-                      ) : (
-                        <span className="text-emerald-700">Todos os parâmetros estão salvos</span>
-                      )}
-                    </div>
-                    <button
-                      type="button"
-                      className="btn-primary text-sm"
-                      onClick={salvar}
-                      disabled={!dirty || salvando}
-                    >
-                      <Save size={14}/> {salvando ? 'Salvando…' : 'Salvar alterações'}
-                    </button>
-                  </div>
                 </div>
               )}
             </div>
@@ -744,13 +744,46 @@ function CopiarParametrosModal({ open, itens, atual, temParamsAtuais, onClose, o
             )}
 
             <p className="text-[11px] text-slate-500">
-              Você ainda precisa clicar em <strong>Salvar alterações</strong> depois pra persistir no banco.
+              Salva automaticamente em instantes.
             </p>
           </div>
         )}
       </div>
     </Modal>
   );
+}
+
+// Indicador discreto do status de auto-save.
+function StatusSalvamento({ dirty, status }) {
+  if (status === 'salvando') {
+    return (
+      <div className="text-[11px] text-slate-500 mt-1 flex items-center gap-1">
+        <Loader2 size={10} className="animate-spin"/> Salvando…
+      </div>
+    );
+  }
+  if (status === 'salvo') {
+    return (
+      <div className="text-[11px] text-emerald-700 mt-1 flex items-center gap-1">
+        <Check size={11}/> Salvo
+      </div>
+    );
+  }
+  if (status === 'erro') {
+    return (
+      <div className="text-[11px] text-rose-700 mt-1 flex items-center gap-1">
+        <CloudOff size={11}/> Erro ao salvar — vai tentar de novo
+      </div>
+    );
+  }
+  if (dirty) {
+    return (
+      <div className="text-[11px] text-amber-700 mt-1 italic">
+        • Salvando em instantes…
+      </div>
+    );
+  }
+  return null;
 }
 
 // Lightbox simples: overlay full-screen com a foto centralizada.

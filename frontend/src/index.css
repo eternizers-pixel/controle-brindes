@@ -74,9 +74,29 @@
 .dark .text-slate-800   { color: rgb(241 245 249); }  /* slate-100 */
 .dark .text-slate-700   { color: rgb(226 232 240); }  /* slate-200 */
 .dark .text-slate-600   { color: rgb(203 213 225); }  /* slate-300 */
-.dark .text-slate-500   { color: rgb(148 163 184); }  /* slate-400 */
+.dark .text-slate-500   { color: rgb(203 213 225); }  /* slate-300 (mais claro) */
 .dark .text-slate-400   { color: rgb(148 163 184); }
 .dark .text-slate-300   { color: rgb(148 163 184); }
+
+/* Texto colorido (badges, headers etc.) — clareia pra contrastar no fundo escuro */
+.dark .text-rose-900,     .dark .text-rose-800,     .dark .text-rose-700     { color: rgb(253 164 175); } /* rose-300 */
+.dark .text-rose-600                                                          { color: rgb(252 165 165); }
+.dark .text-emerald-900,  .dark .text-emerald-800,  .dark .text-emerald-700  { color: rgb(110 231 183); } /* emerald-300 */
+.dark .text-emerald-600                                                       { color: rgb(110 231 183); }
+.dark .text-amber-900,    .dark .text-amber-800,    .dark .text-amber-700    { color: rgb(252 211 77); }  /* amber-300 */
+.dark .text-amber-600                                                         { color: rgb(252 211 77); }
+.dark .text-sky-900,      .dark .text-sky-800,      .dark .text-sky-700      { color: rgb(125 211 252); } /* sky-300 */
+.dark .text-sky-600                                                           { color: rgb(125 211 252); }
+.dark .text-violet-900,   .dark .text-violet-800,   .dark .text-violet-700   { color: rgb(196 181 253); } /* violet-300 */
+.dark .text-violet-600                                                        { color: rgb(196 181 253); }
+.dark .text-indigo-900,   .dark .text-indigo-800,   .dark .text-indigo-700   { color: rgb(165 180 252); } /* indigo-300 */
+.dark .text-indigo-600                                                        { color: rgb(165 180 252); }
+.dark .text-orange-900,   .dark .text-orange-800,   .dark .text-orange-700   { color: rgb(253 186 116); } /* orange-300 */
+.dark .text-orange-600                                                        { color: rgb(253 186 116); }
+.dark .text-brand-700,    .dark .text-brand-800                              { color: rgb(165 180 252); } /* brand ~ indigo-300 */
+.dark .text-brand-600                                                         { color: rgb(165 180 252); }
+.dark .text-teal-700,     .dark .text-teal-800                               { color: rgb(94 234 212); }  /* teal-300 */
+.dark .text-teal-600                                                          { color: rgb(94 234 212); }
 
 .dark .border-slate-100 { border-color: rgb(51 65 85); }  /* slate-700 */
 .dark .border-slate-200 { border-color: rgb(51 65 85); }
@@ -111,6 +131,37 @@
 /* Hovers cinzas comuns */
 .dark .hover\:bg-slate-50:hover  { background-color: rgb(51 65 85); }
 .dark .hover\:bg-slate-100:hover { background-color: rgb(71 85 105); }
+
+/* Gradientes (Dashboard "Investimento social") */
+.dark .from-brand-50,
+.dark .from-violet-50,
+.dark .from-emerald-50,
+.dark .from-rose-50,
+.dark .from-amber-50,
+.dark .from-sky-50,
+.dark .from-indigo-50,
+.dark .from-orange-50 { --tw-gradient-from: rgb(30 41 59) var(--tw-gradient-from-position); }
+.dark .to-brand-50,
+.dark .to-violet-50,
+.dark .to-emerald-50,
+.dark .to-rose-50,
+.dark .to-amber-50,
+.dark .to-sky-50,
+.dark .to-indigo-50,
+.dark .to-orange-50 { --tw-gradient-to: rgb(51 65 85) var(--tw-gradient-to-position); }
+
+/* Anéis (rings) — adaptar pra escuro */
+.dark .ring-indigo-200 { --tw-ring-color: rgb(67 56 202 / 0.5); }
+.dark .ring-rose-300, .dark .ring-rose-200 { --tw-ring-color: rgb(159 18 57 / 0.5); }
+.dark .ring-emerald-200 { --tw-ring-color: rgb(6 95 70 / 0.5); }
+.dark .ring-amber-200 { --tw-ring-color: rgb(146 64 14 / 0.5); }
+.dark .ring-sky-200 { --tw-ring-color: rgb(7 89 133 / 0.5); }
+
+/* "Inputs sem fundo definido" (datalist abrindo dialog branco) — força um look escuro */
+.dark input[type="date"]::-webkit-calendar-picker-indicator,
+.dark input[type="month"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+}
 
 /* Scrollbar leve */
 ::-webkit-scrollbar { width: 10px; height: 10px; }

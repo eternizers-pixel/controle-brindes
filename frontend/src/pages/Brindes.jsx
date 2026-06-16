@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Search, Plus, Package2, X, Printer, Check } from 'lucide-react';
-import { getBrindes } from '../api/client';
+import { Search, Plus, Package2, X, Printer, Check, Award } from 'lucide-react';
+import { getBrindes, getNiveis } from '../api/client';
 import { formatBRL, formatInt, FAIXAS_CUSTO, getFaixaCusto, getFaixaByKey } from '../utils/helpers';
 import BrindeFormModal from '../components/BrindeFormModal';
 import EtiquetasMassaModal from '../components/EtiquetasMassaModal';
+import { badgeCor } from './NiveisBrinde';
 
 const ORDENACOES = [
   { value: 'az',           label: 'Nome (A-Z)' },
@@ -24,6 +25,7 @@ function timestampDe(b) {
 
 export default function Brindes() {
   const [brindes, setBrindes] = useState([]);
+  const [niveis, setNiveis] = useState([]);
   const [busca, setBusca] = useState('');
   const [loading, setLoading] = useState(true);
   const [editFor, setEditFor] = useState(null);
@@ -45,6 +47,10 @@ export default function Brindes() {
 
   const faixaKey = searchParams.get('faixa') || '';
   const faixaSelecionada = faixaKey ? getFaixaByKey(faixaKey) : null;
+  const nivelFiltro = searchParams.get('nivel') || ''; // 'sem' = sem categoria; id = nível específico
+  const nivelSelecionado = nivelFiltro && nivelFiltro !== 'sem'
+    ? niveis.find((n) => String(n.id) === nivelFiltro)
+    : null;
 
   // load silencioso = não troca para "Carregando…" (evita resetar scroll)
   const load = async ({ silent = false } = {}) => {
@@ -55,6 +61,7 @@ export default function Brindes() {
     } finally { if (!silent) setLoading(false); }
   };
   useEffect(() => { load(); }, []);
+  useEffect(() => { getNiveis().then(setNiveis).catch(() => {}); }, []);
   useEffect(() => {
     const t = setTimeout(() => load({ silent: true }), 250);
     return () => clearTimeout(t);
@@ -67,6 +74,11 @@ export default function Brindes() {
         const c = Number(b.custo_unitario || 0);
         return c >= faixaSelecionada.min && c < faixaSelecionada.max;
       });
+    }
+    if (nivelFiltro === 'sem') {
+      lista = lista.filter((b) => !b.nivel_id);
+    } else if (nivelFiltro) {
+      lista = lista.filter((b) => String(b.nivel_id) === nivelFiltro);
     }
     const arr = [...lista];
     switch (ordem) {
@@ -90,6 +102,11 @@ export default function Brindes() {
 
   const setFaixa = (key) => {
     if (!key) searchParams.delete('faixa'); else searchParams.set('faixa', key);
+    setSearchParams(searchParams);
+  };
+
+  const setNivel = (val) => {
+    if (!val) searchParams.delete('nivel'); else searchParams.set('nivel', val);
     setSearchParams(searchParams);
   };
 
@@ -160,6 +177,17 @@ export default function Brindes() {
           </select>
           <select
             className="input sm:w-44"
+            value={nivelFiltro}
+            onChange={(e) => setNivel(e.target.value)}
+          >
+            <option value="">Todos os níveis</option>
+            {niveis.filter((n) => n.ativo !== false).map((n) => (
+              <option key={n.id} value={n.id}>{n.nome}</option>
+            ))}
+            <option value="sem">Sem nível</option>
+          </select>
+          <select
+            className="input sm:w-44"
             value={ordem}
             onChange={(e) => setOrdem(e.target.value)}
           >
@@ -168,17 +196,20 @@ export default function Brindes() {
             ))}
           </select>
         </div>
-        {faixaSelecionada && (
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-slate-600">
-              Filtrando por: <span className={`badge ${faixaSelecionada.badge}`}>{faixaSelecionada.label}</span>
-            </span>
+        {(faixaSelecionada || nivelFiltro) && (
+          <div className="flex items-center justify-between text-xs gap-2 flex-wrap">
+            <div className="text-slate-600 flex items-center gap-1 flex-wrap">
+              Filtrando por:
+              {faixaSelecionada && <span className={`badge ${faixaSelecionada.badge}`}>{faixaSelecionada.label}</span>}
+              {nivelSelecionado && <span className={`badge ${badgeCor(nivelSelecionado.cor)}`}>{nivelSelecionado.nome}</span>}
+              {nivelFiltro === 'sem' && <span className="badge bg-slate-100 text-slate-600">Sem nível</span>}
+            </div>
             <button
               type="button"
-              onClick={() => setFaixa('')}
+              onClick={() => { setFaixa(''); setNivel(''); }}
               className="text-slate-500 hover:text-slate-800 flex items-center gap-1"
             >
-              <X size={12} /> Limpar filtro
+              <X size={12} /> Limpar filtros
             </button>
           </div>
         )}
@@ -238,6 +269,13 @@ export default function Brindes() {
                   {faixa && (
                     <div className="absolute top-2 right-2">
                       <span className={`badge ${faixa.badge} shadow-sm`}>{faixa.label}</span>
+                    </div>
+                  )}
+                  {b.niveis_brinde && (
+                    <div className="absolute bottom-2 right-2">
+                      <span className={`badge ${badgeCor(b.niveis_brinde.cor)} shadow-sm flex items-center gap-1`}>
+                        <Award size={10}/> {b.niveis_brinde.nome}
+                      </span>
                     </div>
                   )}
                 </div>

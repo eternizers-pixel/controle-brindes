@@ -92,7 +92,7 @@ export default function Brindes() {
       default:             arr.sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR'));
     }
     return arr;
-  }, [brindes, faixaSelecionada, ordem]);
+  }, [brindes, faixaSelecionada, nivelFiltro, ordem]);
 
   // Brindes que entram no modal de etiquetas: selecionados (se houver) OU todos os filtrados
   const brindesParaEtiquetas = useMemo(() => {

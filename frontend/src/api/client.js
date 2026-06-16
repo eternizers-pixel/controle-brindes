@@ -218,7 +218,7 @@ export async function criarNivel(payload) {
     ordem: Number(payload.ordem) || 0,
     valor_min: payload.valor_min == null || payload.valor_min === '' ? null : Number(payload.valor_min),
     valor_max: payload.valor_max == null || payload.valor_max === '' ? null : Number(payload.valor_max),
-    inclui_anteriores: !!payload.inclui_anteriores,
+    niveis_inclusos: Array.isArray(payload.niveis_inclusos) ? payload.niveis_inclusos.map(Number) : [],
     cor: payload.cor || null,
     ativo: payload.ativo !== false,
   }).select().single());
@@ -226,13 +226,13 @@ export async function criarNivel(payload) {
 
 export async function atualizarNivel(id, payload) {
   const patch = { atualizado_em: new Date().toISOString() };
-  if ('nome'              in payload) patch.nome = String(payload.nome || '').trim();
-  if ('ordem'             in payload) patch.ordem = Number(payload.ordem) || 0;
-  if ('valor_min'         in payload) patch.valor_min = payload.valor_min == null || payload.valor_min === '' ? null : Number(payload.valor_min);
-  if ('valor_max'         in payload) patch.valor_max = payload.valor_max == null || payload.valor_max === '' ? null : Number(payload.valor_max);
-  if ('inclui_anteriores' in payload) patch.inclui_anteriores = !!payload.inclui_anteriores;
-  if ('cor'               in payload) patch.cor = payload.cor || null;
-  if ('ativo'             in payload) patch.ativo = !!payload.ativo;
+  if ('nome'             in payload) patch.nome = String(payload.nome || '').trim();
+  if ('ordem'            in payload) patch.ordem = Number(payload.ordem) || 0;
+  if ('valor_min'        in payload) patch.valor_min = payload.valor_min == null || payload.valor_min === '' ? null : Number(payload.valor_min);
+  if ('valor_max'        in payload) patch.valor_max = payload.valor_max == null || payload.valor_max === '' ? null : Number(payload.valor_max);
+  if ('niveis_inclusos'  in payload) patch.niveis_inclusos = Array.isArray(payload.niveis_inclusos) ? payload.niveis_inclusos.map(Number) : [];
+  if ('cor'              in payload) patch.cor = payload.cor || null;
+  if ('ativo'            in payload) patch.ativo = !!payload.ativo;
   return await handle(supabase.from('niveis_brinde').update(patch).eq('id', id).select().single());
 }
 

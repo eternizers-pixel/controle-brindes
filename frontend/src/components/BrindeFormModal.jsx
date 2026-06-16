@@ -14,9 +14,12 @@ export default function BrindeFormModal({ open, brinde, onClose, onSaved }) {
   const [form, setForm] = useState({
     nome: '', codigo: '', descricao: '',
     quantidade_estoque: 0, custo_unitario: 0, status: 'ativo',
-    nivel_id: '',
+    nivel_id: '', valor_percebido: '',
   });
   const [niveis, setNiveis] = useState([]);
+  // Flag pra saber se o usuário mexeu manualmente no VPP — se sim,
+  // não sobrescreve mais com o cálculo automático ao digitar o custo
+  const [vppManual, setVppManual] = useState(false);
   const [foto, setFoto] = useState(null);
   const [preview, setPreview] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -40,14 +43,18 @@ export default function BrindeFormModal({ open, brinde, onClose, onSaved }) {
         custo_unitario: brinde.custo_unitario || 0,
         status: brinde.status || 'ativo',
         nivel_id: brinde.nivel_id || '',
+        valor_percebido: brinde.valor_percebido == null ? '' : brinde.valor_percebido,
       });
+      // se já tem um VPP salvo, considera que foi escolha manual — não auto-recalcula
+      setVppManual(brinde.valor_percebido != null && Number(brinde.valor_percebido) > 0);
       setPreview(brinde.foto || null);
     } else {
       setForm({
         nome: '', codigo: '', descricao: '',
         quantidade_estoque: 0, custo_unitario: 0, status: 'ativo',
-        nivel_id: '',
+        nivel_id: '', valor_percebido: '',
       });
+      setVppManual(false);
       setPreview(null);
     }
     // Carrega níveis pra dropdown
@@ -96,6 +103,29 @@ export default function BrindeFormModal({ open, brinde, onClose, onSaved }) {
   };
 
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
+
+  // Handler específico do custo unitário: se o VPP nunca foi editado manualmente,
+  // recalcula VPP = custo × 5 sempre que o custo muda
+  const setCusto = (e) => {
+    const novoCusto = e.target.value;
+    setForm((f) => {
+      const novo = { ...f, custo_unitario: novoCusto };
+      if (!vppManual) {
+        const n = Number(novoCusto);
+        novo.valor_percebido = n > 0 ? Number((n * 5).toFixed(2)) : '';
+      }
+      return novo;
+    });
+  };
+  const setVpp = (e) => {
+    setForm({ ...form, valor_percebido: e.target.value });
+    setVppManual(true);
+  };
+  const resetVppAuto = () => {
+    setVppManual(false);
+    const n = Number(form.custo_unitario);
+    setForm({ ...form, valor_percebido: n > 0 ? Number((n * 5).toFixed(2)) : '' });
+  };
   const onFile = async (e) => {
     const f = e.target.files?.[0];
     if (!f) return;
@@ -123,6 +153,9 @@ export default function BrindeFormModal({ open, brinde, onClose, onSaved }) {
         nivel_id: form.nivel_id ? Number(form.nivel_id) : null,
         estoque_minimo: 0,
         custo_unitario: Number(form.custo_unitario) || 0,
+        valor_percebido: form.valor_percebido === '' || form.valor_percebido == null
+          ? null
+          : Number(form.valor_percebido),
         status: overrideStatus || form.status,
         foto: foto !== null ? foto : (isEdit ? undefined : preview),
       };
@@ -311,7 +344,38 @@ export default function BrindeFormModal({ open, brinde, onClose, onSaved }) {
             <div className={!isEdit ? '' : 'col-span-2'}>
               <label className="label">Custo unitário (R$)</label>
               <input className="input" type="number" step="0.01" min="0"
-                     value={form.custo_unitario} onChange={set('custo_unitario')} />
+                     value={form.custo_unitario} onChange={setCusto} />
+            </div>
+          </div>
+
+          {/* VPP — Valor Percebido do Produto. Default = custo × 5 */}
+          <div>
+            <label className="label flex items-center justify-between gap-2">
+              <span>Valor Percebido do Produto / VPP (R$)</span>
+              {vppManual && (
+                <button
+                  type="button"
+                  onClick={resetVppAuto}
+                  className="text-[10px] text-indigo-600 hover:text-indigo-800 underline normal-case font-normal"
+                  title="Voltar ao cálculo automático (custo × 5)"
+                >
+                  recalcular auto
+                </button>
+              )}
+            </label>
+            <input
+              className="input"
+              type="number"
+              step="0.01"
+              min="0"
+              value={form.valor_percebido}
+              onChange={setVpp}
+              placeholder="(custo × 5)"
+            />
+            <div className="text-[10px] text-slate-500 mt-0.5">
+              {vppManual
+                ? 'Definido manualmente. Pode "recalcular auto" pra voltar ao custo × 5.'
+                : 'Calculado automaticamente como custo × 5. Edite pra sobrescrever.'}
             </div>
           </div>
 

@@ -3,7 +3,7 @@ import {
   Power, PowerOff, Trash2, Plus, Minus, Search, Loader2, Package2,
 } from 'lucide-react';
 import Modal from './Modal';
-import { criarBrinde, atualizarBrinde, excluirBrinde, buscarNoXBZ } from '../api/client';
+import { criarBrinde, atualizarBrinde, excluirBrinde, buscarNoXBZ, getNiveis } from '../api/client';
 import AjusteEstoqueModal from './AjusteEstoqueModal';
 import { useToast } from './Toast';
 import { compressImageFile } from '../utils/imagem';
@@ -14,7 +14,9 @@ export default function BrindeFormModal({ open, brinde, onClose, onSaved }) {
   const [form, setForm] = useState({
     nome: '', codigo: '', descricao: '',
     quantidade_estoque: 0, custo_unitario: 0, status: 'ativo',
+    nivel_id: '',
   });
+  const [niveis, setNiveis] = useState([]);
   const [foto, setFoto] = useState(null);
   const [preview, setPreview] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -37,15 +39,19 @@ export default function BrindeFormModal({ open, brinde, onClose, onSaved }) {
         quantidade_estoque: brinde.quantidade_estoque || 0,
         custo_unitario: brinde.custo_unitario || 0,
         status: brinde.status || 'ativo',
+        nivel_id: brinde.nivel_id || '',
       });
       setPreview(brinde.foto || null);
     } else {
       setForm({
         nome: '', codigo: '', descricao: '',
         quantidade_estoque: 0, custo_unitario: 0, status: 'ativo',
+        nivel_id: '',
       });
       setPreview(null);
     }
+    // Carrega níveis pra dropdown
+    getNiveis().then(setNiveis).catch(() => {});
     setFoto(null);
     setErr('');
     setAjusteDirecao(null);
@@ -114,6 +120,7 @@ export default function BrindeFormModal({ open, brinde, onClose, onSaved }) {
         codigo: form.codigo || null,
         descricao: form.descricao || null,
         categoria_id: null,
+        nivel_id: form.nivel_id ? Number(form.nivel_id) : null,
         estoque_minimo: 0,
         custo_unitario: Number(form.custo_unitario) || 0,
         status: overrideStatus || form.status,
@@ -305,6 +312,20 @@ export default function BrindeFormModal({ open, brinde, onClose, onSaved }) {
               <label className="label">Custo unitário (R$)</label>
               <input className="input" type="number" step="0.01" min="0"
                      value={form.custo_unitario} onChange={set('custo_unitario')} />
+            </div>
+          </div>
+
+          {/* Nível pra integração com orçamento */}
+          <div>
+            <label className="label">Nível de brinde (orçamento)</label>
+            <select className="input" value={form.nivel_id} onChange={set('nivel_id')}>
+              <option value="">Sem categoria (não vai pra orçamentos)</option>
+              {niveis.filter((n) => n.ativo !== false).map((n) => (
+                <option key={n.id} value={n.id}>{n.nome}</option>
+              ))}
+            </select>
+            <div className="text-[10px] text-slate-500 mt-0.5">
+              Define em qual faixa de orçamento este brinde aparece como sugestão.
             </div>
           </div>
 

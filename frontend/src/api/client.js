@@ -77,7 +77,7 @@ export async function criarBrinde(payload) {
   const {
     nome, descricao, foto, categoria_id, codigo, nivel_id,
     quantidade_estoque = 0, estoque_minimo = 5, custo_unitario = 0, status = 'ativo',
-    parametros_gravacao = [],
+    parametros_gravacao = [], valor_percebido,
   } = payload;
 
   const novo = await handle(supabase.from('brindes').insert({
@@ -90,6 +90,7 @@ export async function criarBrinde(payload) {
     quantidade_estoque: Number(quantidade_estoque),
     estoque_minimo: Number(estoque_minimo),
     custo_unitario: Number(custo_unitario),
+    valor_percebido: valor_percebido == null || valor_percebido === '' ? null : Number(valor_percebido),
     status,
     parametros_gravacao: Array.isArray(parametros_gravacao) ? parametros_gravacao : [],
   }).select().single());
@@ -114,6 +115,9 @@ export async function atualizarBrinde(id, payload) {
   if ('categoria_id' in patch) patch.categoria_id = patch.categoria_id || null;
   if ('nivel_id' in patch) patch.nivel_id = patch.nivel_id || null;
   if ('codigo' in patch) patch.codigo = (patch.codigo && String(patch.codigo).trim()) || null;
+  if ('valor_percebido' in patch) {
+    patch.valor_percebido = patch.valor_percebido == null || patch.valor_percebido === '' ? null : Number(patch.valor_percebido);
+  }
   if ('parametros_gravacao' in patch) {
     patch.parametros_gravacao = Array.isArray(patch.parametros_gravacao) ? patch.parametros_gravacao : [];
   }

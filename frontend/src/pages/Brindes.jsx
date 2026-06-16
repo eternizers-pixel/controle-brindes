@@ -300,6 +300,12 @@ export default function Brindes() {
                       <span className="font-semibold text-slate-700">{formatBRL(b.custo_unitario)}</span>
                     </div>
                   )}
+                  {Number(b.valor_percebido) > 0 && (
+                    <div className="text-[11px] text-slate-500 flex items-baseline justify-between">
+                      <span title="Valor Percebido do Produto">VPP</span>
+                      <span className="font-semibold text-indigo-700">{formatBRL(b.valor_percebido)}</span>
+                    </div>
+                  )}
                 </div>
               </div>
             );

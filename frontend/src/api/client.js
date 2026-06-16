@@ -54,7 +54,7 @@ export const criarCategoria = (d) =>
 export async function getBrindes({ search = '', status, categoria } = {}) {
   let q = supabase
     .from('brindes')
-    .select('*, categorias(nome,cor)')
+    .select('*, categorias(nome,cor), niveis_brinde(id,nome,cor)')
     .order('nome');
   if (status)    q = q.eq('status', status);
   if (categoria) q = q.eq('categoria_id', categoria);
@@ -68,14 +68,14 @@ export async function getBrindes({ search = '', status, categoria } = {}) {
 
 export const getBrinde = async (id) => {
   const row = await handle(
-    supabase.from('brindes').select('*, categorias(nome,cor)').eq('id', id).single()
+    supabase.from('brindes').select('*, categorias(nome,cor), niveis_brinde(id,nome,cor)').eq('id', id).single()
   );
   return enriquecerBrinde(row);
 };
 
 export async function criarBrinde(payload) {
   const {
-    nome, descricao, foto, categoria_id, codigo,
+    nome, descricao, foto, categoria_id, codigo, nivel_id,
     quantidade_estoque = 0, estoque_minimo = 5, custo_unitario = 0, status = 'ativo',
     parametros_gravacao = [],
   } = payload;
@@ -85,6 +85,7 @@ export async function criarBrinde(payload) {
     descricao: descricao || null,
     foto: foto || null,
     categoria_id: categoria_id || null,
+    nivel_id: nivel_id || null,
     codigo: (codigo && String(codigo).trim()) || null,
     quantidade_estoque: Number(quantidade_estoque),
     estoque_minimo: Number(estoque_minimo),
@@ -111,6 +112,7 @@ export async function atualizarBrinde(id, payload) {
   const patch = { ...payload };
   delete patch.quantidade_estoque;  // só via movimentações
   if ('categoria_id' in patch) patch.categoria_id = patch.categoria_id || null;
+  if ('nivel_id' in patch) patch.nivel_id = patch.nivel_id || null;
   if ('codigo' in patch) patch.codigo = (patch.codigo && String(patch.codigo).trim()) || null;
   if ('parametros_gravacao' in patch) {
     patch.parametros_gravacao = Array.isArray(patch.parametros_gravacao) ? patch.parametros_gravacao : [];
@@ -195,6 +197,48 @@ export async function atualizarMovimentacao(id, payload) {
   if ('tipo_solicitante' in payload)   patch.tipo_solicitante = clean(payload.tipo_solicitante);
   if ('observacao' in payload)         patch.observacao = clean(payload.observacao);
   return await handle(supabase.from('movimentacoes').update(patch).eq('id', id).select().single());
+}
+
+/* ===================================================================
+   NÍVEIS DE BRINDE (categorias por faixa de valor de orçamento)
+=================================================================== */
+export async function getNiveis() {
+  return (await handle(
+    supabase.from('niveis_brinde').select('*').order('ordem', { ascending: true })
+  )) || [];
+}
+
+export async function criarNivel(payload) {
+  return await handle(supabase.from('niveis_brinde').insert({
+    nome: String(payload.nome || '').trim(),
+    ordem: Number(payload.ordem) || 0,
+    valor_min: payload.valor_min == null || payload.valor_min === '' ? null : Number(payload.valor_min),
+    valor_max: payload.valor_max == null || payload.valor_max === '' ? null : Number(payload.valor_max),
+    inclui_anteriores: !!payload.inclui_anteriores,
+    cor: payload.cor || null,
+    ativo: payload.ativo !== false,
+  }).select().single());
+}
+
+export async function atualizarNivel(id, payload) {
+  const patch = { atualizado_em: new Date().toISOString() };
+  if ('nome'              in payload) patch.nome = String(payload.nome || '').trim();
+  if ('ordem'             in payload) patch.ordem = Number(payload.ordem) || 0;
+  if ('valor_min'         in payload) patch.valor_min = payload.valor_min == null || payload.valor_min === '' ? null : Number(payload.valor_min);
+  if ('valor_max'         in payload) patch.valor_max = payload.valor_max == null || payload.valor_max === '' ? null : Number(payload.valor_max);
+  if ('inclui_anteriores' in payload) patch.inclui_anteriores = !!payload.inclui_anteriores;
+  if ('cor'               in payload) patch.cor = payload.cor || null;
+  if ('ativo'             in payload) patch.ativo = !!payload.ativo;
+  return await handle(supabase.from('niveis_brinde').update(patch).eq('id', id).select().single());
+}
+
+export const excluirNivel = (id) =>
+  handle(supabase.from('niveis_brinde').delete().eq('id', id));
+
+// Helper que o sistema de orçamento pode chamar (chama a RPC do banco).
+// supabase.rpc('brindes_por_orcamento', { p_valor: 1500 }) — devolve lista de brindes liberados.
+export async function brindesPorOrcamento(valor) {
+  return (await handle(supabase.rpc('brindes_por_orcamento', { p_valor: Number(valor) || 0 }))) || [];
 }
 
 /* ===================================================================

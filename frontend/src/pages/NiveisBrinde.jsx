@@ -93,8 +93,9 @@ export default function NiveisBrinde() {
 
       <div className="card p-3 bg-indigo-50/40 border-indigo-200 text-xs text-indigo-900">
         <strong>Como funciona:</strong> cada nível define uma faixa de valor de orçamento.
-        Quando o orçamento cair na faixa, os brindes desse nível ficam disponíveis. Marque
-        "<em>Inclui anteriores</em>" se quiser que esse nível também libere os brindes dos níveis abaixo.
+        Quando o orçamento cair na faixa, os brindes desse nível ficam disponíveis.
+        Você pode também selecionar <em>outros níveis</em> pra incluir junto — por exemplo,
+        Ouro incluir Prata, sem precisar incluir Bronze.
       </div>
 
       {loading ? (
@@ -138,9 +139,15 @@ export default function NiveisBrinde() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className={`badge ${badgeCor(n.cor)}`}>{n.nome}</span>
-                  {n.inclui_anteriores && (
-                    <span className="badge bg-slate-100 text-slate-600 text-[10px]">+ anteriores</span>
-                  )}
+                  {Array.isArray(n.niveis_inclusos) && n.niveis_inclusos.map((nid) => {
+                    const nInc = lista.find((x) => x.id === nid);
+                    if (!nInc) return null;
+                    return (
+                      <span key={nid} className={`badge ${badgeCor(nInc.cor)} text-[10px] opacity-80`} title="Nível incluído">
+                        + {nInc.nome}
+                      </span>
+                    );
+                  })}
                   {!n.ativo && (
                     <span className="badge bg-slate-200 text-slate-600 text-[10px]">inativo</span>
                   )}
@@ -183,6 +190,7 @@ export default function NiveisBrinde() {
       <NivelFormModal
         open={!!editFor || novoOpen}
         nivel={editFor}
+        outrosNiveis={lista.filter((n) => !editFor || n.id !== editFor.id)}
         proxima_ordem={lista.length}
         onClose={() => { setEditFor(null); setNovoOpen(false); }}
         onSaved={() => { load(); setEditFor(null); setNovoOpen(false); }}
@@ -194,12 +202,12 @@ export default function NiveisBrinde() {
 // ============================================================
 // Modal de criar / editar nível
 // ============================================================
-function NivelFormModal({ open, nivel, proxima_ordem, onClose, onSaved }) {
+function NivelFormModal({ open, nivel, outrosNiveis, proxima_ordem, onClose, onSaved }) {
   const toast = useToast();
   const isEdit = !!nivel;
   const [form, setForm] = useState({
     nome: '', valor_min: '', valor_max: '',
-    inclui_anteriores: false, cor: 'sky', ativo: true,
+    niveis_inclusos: [], cor: 'sky', ativo: true,
   });
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState('');
@@ -211,18 +219,26 @@ function NivelFormModal({ open, nivel, proxima_ordem, onClose, onSaved }) {
         nome: nivel.nome || '',
         valor_min: nivel.valor_min == null ? '' : String(nivel.valor_min),
         valor_max: nivel.valor_max == null ? '' : String(nivel.valor_max),
-        inclui_anteriores: !!nivel.inclui_anteriores,
+        niveis_inclusos: Array.isArray(nivel.niveis_inclusos) ? nivel.niveis_inclusos : [],
         cor: nivel.cor || 'sky',
         ativo: nivel.ativo !== false,
       });
     } else {
       setForm({
         nome: '', valor_min: '', valor_max: '',
-        inclui_anteriores: false, cor: 'sky', ativo: true,
+        niveis_inclusos: [], cor: 'sky', ativo: true,
       });
     }
     setErr('');
   }, [open, nivel]);
+
+  const toggleNivelIncluso = (id) => {
+    setForm((f) => {
+      const atuais = f.niveis_inclusos || [];
+      const ja = atuais.includes(id);
+      return { ...f, niveis_inclusos: ja ? atuais.filter((x) => x !== id) : [...atuais, id] };
+    });
+  };
 
   const set = (k) => (e) => {
     const v = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
@@ -330,18 +346,34 @@ function NivelFormModal({ open, nivel, proxima_ordem, onClose, onSaved }) {
           </div>
         </div>
 
-        <label className="flex items-start gap-2 cursor-pointer p-2 bg-slate-50 rounded">
-          <input
-            type="checkbox"
-            checked={form.inclui_anteriores}
-            onChange={set('inclui_anteriores')}
-            className="mt-0.5"
-          />
-          <div className="text-xs">
-            <div className="font-semibold text-slate-700">Inclui níveis anteriores</div>
-            <div className="text-slate-500">Quando o orçamento cair nesta faixa, libera também os brindes dos níveis de ordem menor.</div>
-          </div>
-        </label>
+        <div>
+          <div className="label">Incluir outros níveis (opcional)</div>
+          {outrosNiveis.length === 0 ? (
+            <div className="text-xs text-slate-500 italic p-2 bg-slate-50 rounded">
+              Nenhum outro nível cadastrado ainda. Você pode voltar e configurar isso depois.
+            </div>
+          ) : (
+            <div className="space-y-1 p-2 bg-slate-50 rounded">
+              <div className="text-[11px] text-slate-600 mb-1">
+                Marque outros níveis que também liberam seus brindes quando este nível for ativado:
+              </div>
+              {outrosNiveis.map((n) => {
+                const marcado = (form.niveis_inclusos || []).includes(n.id);
+                return (
+                  <label key={n.id} className="flex items-center gap-2 cursor-pointer p-1 hover:bg-white rounded">
+                    <input
+                      type="checkbox"
+                      checked={marcado}
+                      onChange={() => toggleNivelIncluso(n.id)}
+                    />
+                    <span className={`badge ${badgeCor(n.cor)} text-[11px]`}>{n.nome}</span>
+                    {!n.ativo && <span className="text-[10px] text-slate-400">(inativo)</span>}
+                  </label>
+                );
+              })}
+            </div>
+          )}
+        </div>
 
         {isEdit && (
           <label className="flex items-center gap-2 cursor-pointer text-sm">

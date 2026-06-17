@@ -615,49 +615,39 @@ export default function Relatorios() {
         onXls={orcamRows && orcamRows.length ? exportarOrcamRowsXLS : null}
       >
         {orcamRows && orcamRows.length === 0 && <div className="text-sm text-slate-500">Nenhum brinde via orçamento no período.</div>}
-        {orcamRows && orcamRows.length > 0 && (() => {
-          const ent = orcamRows.filter(r => r.grupo === 'entregue');
-          const nao = orcamRows.filter(r => r.grupo === 'nao_entregue');
-          const agu = orcamRows.filter(r => r.grupo === 'aguardando');
-          const Sec = ({ titulo, rows, cor }) => rows.length === 0 ? null : (
-            <div className="mt-3">
-              <div className={`text-sm font-semibold mb-1`} style={{ color: cor }}>{titulo} ({rows.length})</div>
-              <div className="overflow-x-auto -mx-2">
-                <table className="min-w-full text-xs">
-                  <thead>
-                    <tr className="text-left text-slate-500">
-                      <th className="px-2 py-1">Cliente</th>
-                      <th className="px-2 py-1">Brinde</th>
-                      <th className="px-2 py-1">Nível</th>
-                      <th className="px-2 py-1">Status</th>
-                      <th className="px-2 py-1 text-right">Custo</th>
-                      <th className="px-2 py-1">Data</th>
+        {orcamRows && orcamRows.length > 0 && (
+          <div className="overflow-x-auto -mx-2 mt-3">
+            <table className="min-w-full text-xs">
+              <thead>
+                <tr className="text-left text-slate-500">
+                  <th className="px-2 py-1">Cliente</th>
+                  <th className="px-2 py-1">Brinde</th>
+                  <th className="px-2 py-1">Nível</th>
+                  <th className="px-2 py-1">Status</th>
+                  <th className="px-2 py-1 text-right">Custo</th>
+                  <th className="px-2 py-1">Data</th>
+                </tr>
+              </thead>
+              <tbody>
+                {orcamRows.map((r) => {
+                  const corStatus = r.grupo === 'entregue' ? 'text-emerald-700' :
+                                    r.grupo === 'nao_entregue' ? 'text-red-600' :
+                                    'text-amber-700';
+                  return (
+                    <tr key={r.id} className="border-t border-slate-100">
+                      <td className="px-2 py-1">{r.cliente}</td>
+                      <td className="px-2 py-1">{r.brinde_nome}</td>
+                      <td className="px-2 py-1">{r.nivel_nome || '—'}</td>
+                      <td className={`px-2 py-1 font-medium ${corStatus}`}>{labelStatusReserva(r.status)}</td>
+                      <td className="px-2 py-1 text-right">{formatBRL(r.custo)}</td>
+                      <td className="px-2 py-1">{formatDate(r.criada_em)}</td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {rows.map(r => (
-                      <tr key={r.id} className="border-t border-slate-100">
-                        <td className="px-2 py-1">{r.cliente}</td>
-                        <td className="px-2 py-1">{r.brinde_nome}</td>
-                        <td className="px-2 py-1">{r.nivel_nome || '—'}</td>
-                        <td className="px-2 py-1">{labelStatusReserva(r.status)}</td>
-                        <td className="px-2 py-1 text-right">{formatBRL(r.custo)}</td>
-                        <td className="px-2 py-1">{formatDate(r.criada_em)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          );
-          return (
-            <>
-              <Sec titulo="Entregues" rows={ent} cor="#16a34a" />
-              <Sec titulo="Não entregues" rows={nao} cor="#dc2626" />
-              <Sec titulo="Aguardando" rows={agu} cor="#ca8a04" />
-            </>
-          );
-        })()}
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </RelatorioCard>
 
       {/* Conversão */}

@@ -48,15 +48,15 @@ export default function Relatorios() {
     // personalizado: nao mexe, o usuario controla
   }, [periodoTipo]);
 
-  const [estoque, setEstoque] = useState([]);
+  const [estoque, setEstoque] = useState(null);
   const [saidas,  setSaidas]  = useState(null);
-  const [porDest, setPorDest] = useState([]);
+  const [porDest, setPorDest] = useState(null);
   const [custos,  setCustos]  = useState(null);
   const [patroc,  setPatroc]  = useState(null);
   const [orcamRows, setOrcamRows] = useState(null);
   const [conversao, setConversao] = useState(null);
-  const [porNivel, setPorNivel] = useState([]);
-  const [topBrindes, setTopBrindes] = useState([]);
+  const [porNivel, setPorNivel] = useState(null);
+  const [topBrindes, setTopBrindes] = useState(null);
 
   // Carrega lista de niveis pro filtro
   useState(() => { /* placeholder, we will use useEffect via custom effect below */ });
@@ -395,10 +395,10 @@ export default function Relatorios() {
         titulo="Estoque atual"
         descricao="Quantidade, custo unitário e valor total por brinde."
         onLoad={carregarEstoque}
-        onPdf={estoque.length ? exportarEstoquePDF : null}
-        onXls={estoque.length ? exportarEstoqueXLS : null}
+        onPdf={estoque && estoque.length ? exportarEstoquePDF : null}
+        onXls={estoque && estoque.length ? exportarEstoqueXLS : null}
       >
-        {estoque.length > 0 && (
+        {estoque && estoque.length > 0 && (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="text-slate-500 text-xs uppercase border-b border-slate-100">
@@ -460,10 +460,10 @@ export default function Relatorios() {
         titulo="Por escola / comunidade / evento"
         descricao="Agrupado por destinatário, mostrando unidades e custo total."
         onLoad={carregarPorDest}
-        onPdf={porDest.length ? exportarPorDestPDF : null}
-        onXls={porDest.length ? exportarPorDestXLS : null}
+        onPdf={porDest && porDest.length ? exportarPorDestPDF : null}
+        onXls={porDest && porDest.length ? exportarPorDestXLS : null}
       >
-        {porDest.length > 0 && (
+        {porDest !== null && porDest.length > 0 && (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="text-slate-500 text-xs uppercase border-b border-slate-100">
@@ -697,11 +697,11 @@ export default function Relatorios() {
         titulo="Brindes Entregues por Nível"
         descricao="Quantos brindes de cada nível (Bronze/Prata/Ouro/Platinum) foram entregues no período."
         onLoad={carregarPorNivel}
-        onPdf={porNivel.length ? exportarPorNivelPDF : null}
-        onXls={porNivel.length ? exportarPorNivelXLS : null}
+        onPdf={porNivel && porNivel.length ? exportarPorNivelPDF : null}
+        onXls={porNivel && porNivel.length ? exportarPorNivelXLS : null}
       >
-        {porNivel.length === 0 && <div className="text-sm text-slate-500">Nenhuma saída no período.</div>}
-        {porNivel.length > 0 && (
+        {porNivel !== null && porNivel.length === 0 && <div className="text-sm text-slate-500">Nenhuma saída no período.</div>}
+        {porNivel !== null && porNivel.length > 0 && (
           <div className="overflow-x-auto -mx-2">
             <table className="min-w-full text-sm">
               <thead>
@@ -737,11 +737,11 @@ export default function Relatorios() {
         titulo="Top Brindes Mais Entregues"
         descricao="Ranking dos brindes mais saídos no período com quantidade e VPP entregue."
         onLoad={carregarTopBrindes}
-        onPdf={topBrindes.length ? exportarTopPDF : null}
-        onXls={topBrindes.length ? exportarTopXLS : null}
+        onPdf={topBrindes && topBrindes.length ? exportarTopPDF : null}
+        onXls={topBrindes && topBrindes.length ? exportarTopXLS : null}
       >
-        {topBrindes.length === 0 && <div className="text-sm text-slate-500">Nenhuma entrega no período.</div>}
-        {topBrindes.length > 0 && (
+        {topBrindes !== null && topBrindes.length === 0 && <div className="text-sm text-slate-500">Nenhuma entrega no período.</div>}
+        {topBrindes !== null && topBrindes.length > 0 && (
           <div className="overflow-x-auto -mx-2">
             <table className="min-w-full text-sm">
               <thead>

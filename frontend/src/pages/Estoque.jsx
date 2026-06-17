@@ -1,8 +1,8 @@
 // Tela "Entregar Brinde" — fluxo simples para dar baixa em brindes
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Search, Send, Package2, X } from 'lucide-react';
-import { getBrindes } from '../api/client';
+import { Search, Send, Package2, X, Clock } from 'lucide-react';
+import { getBrindes, getReservasAtivas } from '../api/client';
 import { formatInt, FAIXAS_CUSTO, getFaixaByKey } from '../utils/helpers';
 import SaidaModal from '../components/SaidaModal';
 
@@ -23,6 +23,7 @@ function timestampDe(b) {
 
 export default function Estoque() {
   const [brindes, setBrindes] = useState([]);
+  const [reservas, setReservas] = useState([]);
   const [busca, setBusca] = useState('');
   const [loading, setLoading] = useState(true);
   const [saidaFor, setSaidaFor] = useState(null);
@@ -154,7 +155,9 @@ export default function Estoque() {
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
           {brindesFiltrados.map((b) => {
-            const sem = b.quantidade_estoque <= 0;
+            const reservadasCount = reservas.filter(r => r.brinde_id === b.id).length;
+            const disponivel = (b.quantidade_estoque || 0) - reservadasCount;
+            const sem = disponivel <= 0;
             return (
               <button
                 key={b.id}
@@ -189,7 +192,12 @@ export default function Estoque() {
                   <div className="text-xs text-slate-500 mt-auto pt-1 flex items-baseline justify-between">
                     <span>Estoque</span>
                     <span className={`text-base font-bold ${sem ? 'text-rose-600' : 'text-slate-800'}`}>
-                      {formatInt(b.quantidade_estoque)}
+                      {formatInt(disponivel)}
+                    {reservadasCount > 0 && (
+                      <span className="ml-1 text-[10px] font-semibold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">
+                        {reservadasCount} reservada{reservadasCount > 1 ? 's' : ''}
+                      </span>
+                    )}
                     </span>
                   </div>
                 </div>

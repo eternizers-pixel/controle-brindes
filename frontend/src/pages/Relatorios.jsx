@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+// redeploy nudge 2026-06-17
 import { FileText, FileSpreadsheet, Download } from 'lucide-react';
 import {
   relEstoque, relSaidas, relPorDestinatario, relCustoEntregas, relPatrocinios,

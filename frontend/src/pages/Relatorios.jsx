@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { FileText, FileSpreadsheet, Download } from 'lucide-react';
 import {
   relEstoque, relSaidas, relPorDestinatario, relCustoEntregas, relPatrocinios,
+  relBrindesViaOrcamento, relConversaoBrinde, relPorNivel, relTopBrindes,
+  getNiveis,
 } from '../api/client';
 import { exportarPDF, exportarExcel } from '../utils/export';
 import {
@@ -14,19 +16,34 @@ export default function Relatorios() {
   const [periodo, setPeriodo] = useState({ inicio: '', fim: '' });
   const [tipo, setTipo] = useState('');
   const [formaPag, setFormaPag] = useState('');
+  const [nivel, setNivel] = useState('');
+  const [niveis, setNiveis] = useState([]);
 
   const [estoque, setEstoque] = useState([]);
   const [saidas,  setSaidas]  = useState(null);
   const [porDest, setPorDest] = useState([]);
   const [custos,  setCustos]  = useState(null);
   const [patroc,  setPatroc]  = useState(null);
+  const [orcamRows, setOrcamRows] = useState(null);
+  const [conversao, setConversao] = useState(null);
+  const [porNivel, setPorNivel] = useState([]);
+  const [topBrindes, setTopBrindes] = useState([]);
+
+  // Carrega lista de niveis pro filtro
+  useState(() => { /* placeholder, we will use useEffect via custom effect below */ });
 
   const params = () => {
     const p = {};
     if (periodo.inicio) p.inicio = periodo.inicio;
     if (periodo.fim)    p.fim    = periodo.fim;
+    if (nivel)          p.nivel  = nivel;
     return p;
   };
+
+  // Carrega niveis para o filtro
+  useEffect(() => {
+    getNiveis().then((data) => setNiveis(Array.isArray(data) ? data : []));
+  }, []);
 
   // --- Estoque ---
   const carregarEstoque = async () => setEstoque(await relEstoque());
@@ -156,6 +173,116 @@ export default function Relatorios() {
     });
   };
 
+
+  // --- Brindes via orcamento (lista detalhada) ---
+  const carregarOrcamRows = async () => setOrcamRows(await relBrindesViaOrcamento(params()));
+  const labelGrupoBrinde = (g) =>
+    g === 'entregue' ? 'Entregue' : g === 'nao_entregue' ? 'Não entregue' : 'Aguardando';
+  const labelStatusReserva = (s) => {
+    switch (s) {
+      case 'confirmado': return 'Entregue';
+      case 'cancelada':  return 'Cancelada';
+      case 'expirada':   return 'Validade expirada';
+      case 'reservado':  return 'Reservado';
+      case 'pensando':   return 'Pensando';
+      default:           return s || '—';
+    }
+  };
+  const exportarOrcamRowsPDF = () => {
+    exportarPDF({
+      titulo: 'Brindes via Orçamento',
+      subtitulo: `Período: ${periodo.inicio || '—'} a ${periodo.fim || '—'}  ·  Total: ${orcamRows.length} reservas`,
+      colunas: ['Cliente', 'Brinde', 'Nível', 'Status', 'Custo', 'VPP', 'Data'],
+      linhas: orcamRows.map((r) => [
+        r.cliente, r.brinde_nome, r.nivel_nome || '—',
+        labelStatusReserva(r.status), formatBRL(r.custo), formatBRL(r.vpp), formatDate(r.criada_em),
+      ]),
+    });
+  };
+  const exportarOrcamRowsXLS = () =>
+    exportarExcel({
+      titulo: 'Brindes via Orçamento',
+      sheetName: 'Via Orçamento',
+      dados: orcamRows.map((r) => ({
+        Cliente: r.cliente, Brinde: r.brinde_nome, Nível: r.nivel_nome || '',
+        Status: labelStatusReserva(r.status),
+        Grupo: labelGrupoBrinde(r.grupo),
+        Custo: r.custo, VPP: r.vpp,
+        'Data reserva': r.criada_em,
+        'Confirmada em': r.confirmada_em || '',
+        'Cancelada em': r.cancelada_em || '',
+        'ID Orçamento': r.orcamento_id || '',
+      })),
+    });
+
+  // --- Conversao ---
+  const carregarConversao = async () => setConversao(await relConversaoBrinde(params()));
+  const exportarConversaoPDF = () => {
+    exportarPDF({
+      titulo: 'Conversão de Orçamentos com Brinde',
+      subtitulo: `Período: ${periodo.inicio || '—'} a ${periodo.fim || '—'}`,
+      colunas: ['Métrica', 'Valor'],
+      linhas: [
+        ['Total de orçamentos com brinde', conversao.total],
+        ['Brindes entregues (cliente fechou)', conversao.entregues],
+        ['Brindes não entregues (não voltou)', conversao.naoEntregues],
+        ['Aguardando decisão', conversao.aguardando],
+        ['Taxa de conversão', `${(conversao.taxa * 100).toFixed(1)}%`],
+        ['Custo total entregue', formatBRL(conversao.custoEntregue)],
+        ['VPP total entregue', formatBRL(conversao.vppEntregue)],
+      ],
+    });
+  };
+
+  // --- Por Nivel ---
+  const carregarPorNivel = async () => setPorNivel(await relPorNivel(params()));
+  const exportarPorNivelPDF = () => {
+    exportarPDF({
+      titulo: 'Brindes Entregues por Nível',
+      subtitulo: `Período: ${periodo.inicio || '—'} a ${periodo.fim || '—'}`,
+      colunas: ['Nível', 'Variedade', 'Unidades', 'Custo total'],
+      linhas: porNivel.map((r) => [r.nivel_nome, r.variedade, r.unidades, formatBRL(r.custo_total)]),
+    });
+  };
+  const exportarPorNivelXLS = () =>
+    exportarExcel({
+      titulo: 'Brindes Entregues por Nível',
+      sheetName: 'Por Nível',
+      dados: porNivel.map((r) => ({
+        Nível: r.nivel_nome,
+        'Variedade brindes': r.variedade,
+        'Unidades entregues': r.unidades,
+        'Custo total': r.custo_total,
+      })),
+    });
+
+  // --- Top Brindes ---
+  const carregarTopBrindes = async () => setTopBrindes(await relTopBrindes(params()));
+  const exportarTopPDF = () => {
+    exportarPDF({
+      titulo: 'Top Brindes Mais Entregues',
+      subtitulo: `Período: ${periodo.inicio || '—'} a ${periodo.fim || '—'}`,
+      colunas: ['Posição', 'Brinde', 'Nível', 'Unidades', 'Custo total', 'VPP total'],
+      linhas: topBrindes.map((r, i) => [
+        i + 1, r.brinde_nome, r.nivel_nome || '—', r.unidades,
+        formatBRL(r.custo_total), formatBRL(r.vpp_total),
+      ]),
+    });
+  };
+  const exportarTopXLS = () =>
+    exportarExcel({
+      titulo: 'Top Brindes Mais Entregues',
+      sheetName: 'Top Brindes',
+      dados: topBrindes.map((r, i) => ({
+        Posição: i + 1,
+        Brinde: r.brinde_nome,
+        Nível: r.nivel_nome || '',
+        Unidades: r.unidades,
+        'Custo total': r.custo_total,
+        'VPP total': r.vpp_total,
+      })),
+    });
+
   return (
     <div className="space-y-6">
       <header>
@@ -163,7 +290,7 @@ export default function Relatorios() {
         <p className="text-slate-500 text-sm">Filtre, visualize e exporte em PDF ou Excel</p>
       </header>
 
-      <div className="card p-4 grid gap-3 sm:grid-cols-2 md:grid-cols-4">
+      <div className="card p-4 grid gap-3 sm:grid-cols-2 md:grid-cols-5">
         <div>
           <label className="label">Início</label>
           <input className="input" type="date" value={periodo.inicio} onChange={(e) => setPeriodo({ ...periodo, inicio: e.target.value })} />
@@ -184,6 +311,13 @@ export default function Relatorios() {
           <select className="input" value={formaPag} onChange={(e) => setFormaPag(e.target.value)}>
             <option value="">Todas</option>
             {FORMAS_PAGAMENTO.map((f) => <option key={f.value} value={f.value}>{f.label}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="label">Nível do brinde</label>
+          <select className="input" value={nivel} onChange={(e) => setNivel(e.target.value)}>
+            <option value="">Todos</option>
+            {niveis.map((n) => <option key={n.id} value={n.id}>{n.nome}</option>)}
           </select>
         </div>
       </div>
@@ -392,6 +526,181 @@ export default function Relatorios() {
                 </tbody>
               </table>
             )}
+          </div>
+        )}
+      </RelatorioCard>
+
+      {/* Brindes via Orçamento */}
+      <RelatorioCard
+        titulo="Brindes via Orçamento"
+        descricao="Lista detalhada de brindes vinculados a orçamentos: entregues, não entregues e aguardando."
+        onLoad={carregarOrcamRows}
+        onPdf={orcamRows && orcamRows.length ? exportarOrcamRowsPDF : null}
+        onXls={orcamRows && orcamRows.length ? exportarOrcamRowsXLS : null}
+      >
+        {orcamRows && orcamRows.length === 0 && <div className="text-sm text-slate-500">Nenhum brinde via orçamento no período.</div>}
+        {orcamRows && orcamRows.length > 0 && (() => {
+          const ent = orcamRows.filter(r => r.grupo === 'entregue');
+          const nao = orcamRows.filter(r => r.grupo === 'nao_entregue');
+          const agu = orcamRows.filter(r => r.grupo === 'aguardando');
+          const Sec = ({ titulo, rows, cor }) => rows.length === 0 ? null : (
+            <div className="mt-3">
+              <div className={`text-sm font-semibold mb-1`} style={{ color: cor }}>{titulo} ({rows.length})</div>
+              <div className="overflow-x-auto -mx-2">
+                <table className="min-w-full text-xs">
+                  <thead>
+                    <tr className="text-left text-slate-500">
+                      <th className="px-2 py-1">Cliente</th>
+                      <th className="px-2 py-1">Brinde</th>
+                      <th className="px-2 py-1">Nível</th>
+                      <th className="px-2 py-1">Status</th>
+                      <th className="px-2 py-1 text-right">Custo</th>
+                      <th className="px-2 py-1">Data</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map(r => (
+                      <tr key={r.id} className="border-t border-slate-100">
+                        <td className="px-2 py-1">{r.cliente}</td>
+                        <td className="px-2 py-1">{r.brinde_nome}</td>
+                        <td className="px-2 py-1">{r.nivel_nome || '—'}</td>
+                        <td className="px-2 py-1">{labelStatusReserva(r.status)}</td>
+                        <td className="px-2 py-1 text-right">{formatBRL(r.custo)}</td>
+                        <td className="px-2 py-1">{formatDate(r.criada_em)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          );
+          return (
+            <>
+              <Sec titulo="Entregues" rows={ent} cor="#16a34a" />
+              <Sec titulo="Não entregues" rows={nao} cor="#dc2626" />
+              <Sec titulo="Aguardando" rows={agu} cor="#ca8a04" />
+            </>
+          );
+        })()}
+      </RelatorioCard>
+
+      {/* Conversão */}
+      <RelatorioCard
+        titulo="Conversão de Orçamentos com Brinde"
+        descricao="Quantos clientes que viram o brinde fecharam vs não voltaram. Taxa de conversão."
+        onLoad={carregarConversao}
+        onPdf={conversao ? exportarConversaoPDF : null}
+        onXls={null}
+      >
+        {conversao && (
+          <div className="grid gap-3 grid-cols-2 sm:grid-cols-4 mt-2">
+            <div className="p-3 rounded-lg bg-slate-50">
+              <div className="text-xs text-slate-500">Total c/ brinde</div>
+              <div className="text-xl font-bold text-slate-800">{conversao.total}</div>
+            </div>
+            <div className="p-3 rounded-lg bg-green-50">
+              <div className="text-xs text-green-700">Entregues</div>
+              <div className="text-xl font-bold text-green-700">{conversao.entregues}</div>
+            </div>
+            <div className="p-3 rounded-lg bg-red-50">
+              <div className="text-xs text-red-700">Não entregues</div>
+              <div className="text-xl font-bold text-red-700">{conversao.naoEntregues}</div>
+            </div>
+            <div className="p-3 rounded-lg bg-amber-50">
+              <div className="text-xs text-amber-700">Aguardando</div>
+              <div className="text-xl font-bold text-amber-700">{conversao.aguardando}</div>
+            </div>
+            <div className="p-3 rounded-lg bg-indigo-50 col-span-2">
+              <div className="text-xs text-indigo-700">Taxa de conversão (entregues / fechados)</div>
+              <div className="text-2xl font-bold text-indigo-700">{(conversao.taxa * 100).toFixed(1)}%</div>
+            </div>
+            <div className="p-3 rounded-lg bg-slate-50">
+              <div className="text-xs text-slate-500">Custo entregue</div>
+              <div className="text-base font-semibold text-slate-800">{formatBRL(conversao.custoEntregue)}</div>
+            </div>
+            <div className="p-3 rounded-lg bg-slate-50">
+              <div className="text-xs text-slate-500">VPP entregue</div>
+              <div className="text-base font-semibold text-slate-800">{formatBRL(conversao.vppEntregue)}</div>
+            </div>
+          </div>
+        )}
+      </RelatorioCard>
+
+      {/* Por Nivel */}
+      <RelatorioCard
+        titulo="Brindes Entregues por Nível"
+        descricao="Quantos brindes de cada nível (Bronze/Prata/Ouro/Platinum) foram entregues no período."
+        onLoad={carregarPorNivel}
+        onPdf={porNivel.length ? exportarPorNivelPDF : null}
+        onXls={porNivel.length ? exportarPorNivelXLS : null}
+      >
+        {porNivel.length === 0 && <div className="text-sm text-slate-500">Nenhuma saída no período.</div>}
+        {porNivel.length > 0 && (
+          <div className="overflow-x-auto -mx-2">
+            <table className="min-w-full text-sm">
+              <thead>
+                <tr className="text-left text-slate-500">
+                  <th className="px-2 py-1">Nível</th>
+                  <th className="px-2 py-1 text-right">Variedade</th>
+                  <th className="px-2 py-1 text-right">Unidades</th>
+                  <th className="px-2 py-1 text-right">Custo total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {porNivel.map((r) => (
+                  <tr key={r.nivel_id || 'sem'} className="border-t border-slate-100">
+                    <td className="px-2 py-1">
+                      <span className="inline-flex items-center gap-1.5">
+                        {r.nivel_cor && <span className="w-3 h-3 rounded-full" style={{ background: r.nivel_cor }} />}
+                        {r.nivel_nome}
+                      </span>
+                    </td>
+                    <td className="px-2 py-1 text-right">{r.variedade}</td>
+                    <td className="px-2 py-1 text-right font-medium">{r.unidades}</td>
+                    <td className="px-2 py-1 text-right">{formatBRL(r.custo_total)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </RelatorioCard>
+
+      {/* Top Brindes */}
+      <RelatorioCard
+        titulo="Top Brindes Mais Entregues"
+        descricao="Ranking dos brindes mais saídos no período com quantidade e VPP entregue."
+        onLoad={carregarTopBrindes}
+        onPdf={topBrindes.length ? exportarTopPDF : null}
+        onXls={topBrindes.length ? exportarTopXLS : null}
+      >
+        {topBrindes.length === 0 && <div className="text-sm text-slate-500">Nenhuma entrega no período.</div>}
+        {topBrindes.length > 0 && (
+          <div className="overflow-x-auto -mx-2">
+            <table className="min-w-full text-sm">
+              <thead>
+                <tr className="text-left text-slate-500">
+                  <th className="px-2 py-1">#</th>
+                  <th className="px-2 py-1">Brinde</th>
+                  <th className="px-2 py-1">Nível</th>
+                  <th className="px-2 py-1 text-right">Unidades</th>
+                  <th className="px-2 py-1 text-right">Custo total</th>
+                  <th className="px-2 py-1 text-right">VPP total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {topBrindes.slice(0, 30).map((r, i) => (
+                  <tr key={r.brinde_id} className="border-t border-slate-100">
+                    <td className="px-2 py-1 text-slate-500">{i + 1}</td>
+                    <td className="px-2 py-1 font-medium">{r.brinde_nome}</td>
+                    <td className="px-2 py-1">{r.nivel_nome || '—'}</td>
+                    <td className="px-2 py-1 text-right font-medium">{r.unidades}</td>
+                    <td className="px-2 py-1 text-right">{formatBRL(r.custo_total)}</td>
+                    <td className="px-2 py-1 text-right">{formatBRL(r.vpp_total)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </RelatorioCard>

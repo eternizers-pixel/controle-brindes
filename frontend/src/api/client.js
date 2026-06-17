@@ -533,8 +533,8 @@ export async function relBrindesViaOrcamento(params = {}) {
   let q = supabase.from('reservas_brinde')
     .select('*, brindes!inner(id, nome, custo_unitario, valor_percebido, nivel_id, niveis_brinde(id, nome, cor))')
     .order('criada_em', { ascending: false });
-  if (params.inicio) q = q.gte('criada_em', params.inicio);
-  if (params.fim)    q = q.lte('criada_em', params.fim);
+  if (params.inicio) q = q.gte('criada_em', params.inicio + 'T00:00:00');
+  if (params.fim)    q = q.lte('criada_em', params.fim + 'T23:59:59.999');
   if (params.nivel)  q = q.eq('brindes.nivel_id', params.nivel);
   const rows = await handle(q);
 

@@ -13,11 +13,39 @@ import {
 } from '../utils/helpers';
 
 export default function Relatorios() {
+  const [periodoTipo, setPeriodoTipo] = useState('mes_atual');
   const [periodo, setPeriodo] = useState({ inicio: '', fim: '' });
   const [tipo, setTipo] = useState('');
   const [formaPag, setFormaPag] = useState('');
   const [nivel, setNivel] = useState('');
   const [niveis, setNiveis] = useState([]);
+
+  // Calcula intervalo de datas conforme o tipo de periodo selecionado
+  useEffect(() => {
+    const fmt = (d) => {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    };
+    const hoje = new Date();
+    if (periodoTipo === 'total') {
+      setPeriodo({ inicio: '', fim: '' });
+    } else if (periodoTipo === 'mes_atual') {
+      const i = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+      setPeriodo({ inicio: fmt(i), fim: fmt(hoje) });
+    } else if (periodoTipo === 'ultimos_3') {
+      const d = new Date(hoje); d.setMonth(d.getMonth() - 3);
+      setPeriodo({ inicio: fmt(d), fim: fmt(hoje) });
+    } else if (periodoTipo === 'ultimos_6') {
+      const d = new Date(hoje); d.setMonth(d.getMonth() - 6);
+      setPeriodo({ inicio: fmt(d), fim: fmt(hoje) });
+    } else if (periodoTipo === 'ano') {
+      const i = new Date(hoje.getFullYear(), 0, 1);
+      setPeriodo({ inicio: fmt(i), fim: fmt(hoje) });
+    }
+    // personalizado: nao mexe, o usuario controla
+  }, [periodoTipo]);
 
   const [estoque, setEstoque] = useState([]);
   const [saidas,  setSaidas]  = useState(null);
@@ -48,25 +76,42 @@ export default function Relatorios() {
   // --- Estoque ---
   const carregarEstoque = async () => setEstoque(await relEstoque());
   const exportarEstoquePDF = () => {
+    const totalQtd = estoque.reduce((s, r) => s + Number(r.quantidade_estoque || 0), 0);
+    const totalValor = estoque.reduce((s, r) => s + Number(r.valor_total || 0), 0);
     exportarPDF({
       titulo: 'Relatório de Estoque Atual',
+      subtitulo: `Total: ${totalQtd} unidades  ·  Valor total: ${formatBRL(totalValor)}`,
       colunas: ['Brinde', 'Categoria', 'Estoque', 'Mín', 'Custo unit.', 'Valor total', 'Status'],
-      linhas: estoque.map((r) => [
-        r.nome, r.categoria || '—', r.quantidade_estoque, r.estoque_minimo,
-        formatBRL(r.custo_unitario), formatBRL(r.valor_total), r.status,
-      ]),
+      linhas: [
+        ...estoque.map((r) => [
+          r.nome, r.categoria || '—', r.quantidade_estoque, r.estoque_minimo,
+          formatBRL(r.custo_unitario), formatBRL(r.valor_total), r.status,
+        ]),
+        ['TOTAL', '', totalQtd, '', '', formatBRL(totalValor), ''],
+      ],
     });
   };
   const exportarEstoqueXLS = () => {
     exportarExcel({
       titulo: 'Relatório de Estoque Atual',
       sheetName: 'Estoque',
-      dados: estoque.map((r) => ({
+      dados: [
+        ...estoque.map((r) => ({
         Brinde: r.nome, Categoria: r.categoria || '',
         Estoque: r.quantidade_estoque, Mínimo: r.estoque_minimo,
         'Custo unit.': r.custo_unitario, 'Valor total': r.valor_total,
         Status: r.status,
       })),
+        {
+          Brinde: 'TOTAL',
+          Categoria: '',
+          Estoque: estoque.reduce((s, r) => s + Number(r.quantidade_estoque || 0), 0),
+          'Estoque mínimo': '',
+          'Custo unitário': '',
+          'Valor total': estoque.reduce((s, r) => s + Number(r.valor_total || 0), 0),
+          Status: '',
+        },
+      ],
     });
   };
 
@@ -290,35 +335,57 @@ export default function Relatorios() {
         <p className="text-slate-500 text-sm">Filtre, visualize e exporte em PDF ou Excel</p>
       </header>
 
-      <div className="card p-4 grid gap-3 sm:grid-cols-2 md:grid-cols-5">
-        <div>
-          <label className="label">Início</label>
-          <input className="input" type="date" value={periodo.inicio} onChange={(e) => setPeriodo({ ...periodo, inicio: e.target.value })} />
+      <div className="card p-4 space-y-3">
+        {/* Linha 1: Período (+ datas se personalizado) */}
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div>
+            <label className="label text-xs">Período</label>
+            <select className="input" value={periodoTipo} onChange={(e) => setPeriodoTipo(e.target.value)}>
+              <option value="mes_atual">Mês atual</option>
+              <option value="ultimos_3">Últimos 3 meses</option>
+              <option value="ultimos_6">Últimos 6 meses</option>
+              <option value="ano">Ano</option>
+              <option value="total">Total geral</option>
+              <option value="personalizado">Personalizado</option>
+            </select>
+          </div>
+          {periodoTipo === 'personalizado' && (
+            <>
+              <div>
+                <label className="label text-xs">Início</label>
+                <input className="input" type="date" value={periodo.inicio} onChange={(e) => setPeriodo({ ...periodo, inicio: e.target.value })} />
+              </div>
+              <div>
+                <label className="label text-xs">Fim</label>
+                <input className="input" type="date" value={periodo.fim} onChange={(e) => setPeriodo({ ...periodo, fim: e.target.value })} />
+              </div>
+            </>
+          )}
         </div>
-        <div>
-          <label className="label">Fim</label>
-          <input className="input" type="date" value={periodo.fim} onChange={(e) => setPeriodo({ ...periodo, fim: e.target.value })} />
-        </div>
-        <div>
-          <label className="label">Tipo de solicitante</label>
-          <select className="input" value={tipo} onChange={(e) => setTipo(e.target.value)}>
-            <option value="">Todos</option>
-            {TIPOS_SOLICITANTE.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="label">Forma de pagamento (patrocínio)</label>
-          <select className="input" value={formaPag} onChange={(e) => setFormaPag(e.target.value)}>
-            <option value="">Todas</option>
-            {FORMAS_PAGAMENTO.map((f) => <option key={f.value} value={f.value}>{f.label}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="label">Nível do brinde</label>
-          <select className="input" value={nivel} onChange={(e) => setNivel(e.target.value)}>
-            <option value="">Todos</option>
-            {niveis.map((n) => <option key={n.id} value={n.id}>{n.nome}</option>)}
-          </select>
+
+        {/* Linha 2: Tipo + Forma + Nível */}
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div>
+            <label className="label text-xs">Tipo de solicitante</label>
+            <select className="input" value={tipo} onChange={(e) => setTipo(e.target.value)}>
+              <option value="">Todos</option>
+              {TIPOS_SOLICITANTE.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="label text-xs">Forma de pagamento (patrocínio)</label>
+            <select className="input" value={formaPag} onChange={(e) => setFormaPag(e.target.value)}>
+              <option value="">Todas</option>
+              {FORMAS_PAGAMENTO.map((f) => <option key={f.value} value={f.value}>{f.label}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="label text-xs">Nível do brinde</label>
+            <select className="input" value={nivel} onChange={(e) => setNivel(e.target.value)}>
+              <option value="">Todos</option>
+              {niveis.map((n) => <option key={n.id} value={n.id}>{n.nome}</option>)}
+            </select>
+          </div>
         </div>
       </div>
 
@@ -349,6 +416,14 @@ export default function Relatorios() {
                   </tr>
                 ))}
               </tbody>
+              <tfoot>
+                <tr className="border-t-2 border-slate-300 bg-slate-50 font-bold text-slate-800">
+                  <td className="py-2" colSpan={2}>TOTAL</td>
+                  <td className="text-right">{formatInt(estoque.reduce((s, r) => s + Number(r.quantidade_estoque || 0), 0))}</td>
+                  <td className="text-right text-slate-500 text-xs">—</td>
+                  <td className="text-right text-emerald-700">{formatBRL(estoque.reduce((s, r) => s + Number(r.valor_total || 0), 0))}</td>
+                </tr>
+              </tfoot>
             </table>
           </div>
         )}

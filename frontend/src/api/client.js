@@ -497,3 +497,15 @@ export async function relCustoEntregas(params = {}) {
   const por_mes = Object.values(porMes).sort((a, b) => a.mes.localeCompare(b.mes));
   return { custo_total: total_custo, unidades, movimentacoes: rows.length, por_mes };
 }
+
+
+export async function getReservasAtivas() {
+  const { data, error } = await supabase
+    .from('reservas_brinde')
+    .select('id, brinde_id, orcamento_id, orcamento_info, status, expira_em, criada_em')
+    .in('status', ['reservado', 'pensando'])
+    .gt('expira_em', new Date().toISOString())
+    .order('criada_em', { ascending: false });
+  if (error) { console.error('getReservasAtivas err', error); return []; }
+  return data || [];
+}

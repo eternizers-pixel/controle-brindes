@@ -1,15 +1,16 @@
 import { useEffect, useState } from 'react';
 import {
   ArrowDownCircle, ArrowUpCircle, Filter, Trash2, MessageSquare, X, Calendar,
-  Package, Users, Tag, DollarSign, Edit2, Save,
+  Package, Users, Tag, DollarSign, Edit2, Save, Clock,
 } from 'lucide-react';
-import { getMovimentacoes, getBrindes, removerMovimentacao, atualizarMovimentacao } from '../api/client';
+import { getMovimentacoes, getBrindes, removerMovimentacao, atualizarMovimentacao, getReservasAtivas } from '../api/client';
 import { formatBRL, formatInt, formatDate, labelTipo, TIPOS_SOLICITANTE } from '../utils/helpers';
 import Modal from '../components/Modal';
 import { useToast } from '../components/Toast';
 
 export default function Movimentacoes() {
   const toast = useToast();
+  const [reservas, setReservas] = useState([]);
   const [movs, setMovs] = useState([]);
   const [brindes, setBrindes] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -147,6 +148,30 @@ export default function Movimentacoes() {
               </button>
             </div>
           )}
+        </div>
+      )}
+
+            {reservas.length > 0 && (
+        <div className="card p-4 border-l-4 border-amber-400 bg-amber-50">
+          <h3 className="font-semibold text-amber-900 flex items-center gap-2 mb-3">
+            <Clock size={18}/> Brindes reservados (aguardando)
+          </h3>
+          <div className="space-y-2">
+            {reservas.map(r => {
+              const b = brindes.find(x => x.id === r.brinde_id);
+              const exp = new Date(r.expira_em).toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' });
+              const tipoLabel = r.status === 'pensando' ? 'cliente vai pensar' : 'reservado';
+              return (
+                <div key={r.id} className="flex items-center justify-between text-sm bg-white rounded px-3 py-2 border border-amber-200">
+                  <div>
+                    <strong>{b?.nome || 'Brinde ?'}</strong>
+                    <span className="text-slate-500"> — {tipoLabel}, válido até {exp}</span>
+                  </div>
+                  <span className="text-amber-700 font-semibold">RESERVADO</span>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 

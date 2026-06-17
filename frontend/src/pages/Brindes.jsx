@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Search, Plus, Package2, X, Printer, Check, Award } from 'lucide-react';
 import { getBrindes, getNiveis } from '../api/client';
-import { formatBRL, formatInt, FAIXAS_CUSTO, getFaixaCusto, getFaixaByKey } from '../utils/helpers';
+import { formatBRL, formatInt, FAIXAS_CUSTO, getFaixaCusto, getFaixaByKey, normalize } from '../utils/helpers';
 import BrindeFormModal from '../components/BrindeFormModal';
 import EtiquetasMassaModal from '../components/EtiquetasMassaModal';
 import { badgeCor } from './NiveisBrinde';
@@ -56,19 +56,23 @@ export default function Brindes() {
   const load = async ({ silent = false } = {}) => {
     if (!silent) setLoading(true);
     try {
-      const data = await getBrindes({ search: busca });
+      const data = await getBrindes({});
       setBrindes(data);
     } finally { if (!silent) setLoading(false); }
   };
   useEffect(() => { load(); }, []);
   useEffect(() => { getNiveis().then(setNiveis).catch(() => {}); }, []);
-  useEffect(() => {
-    const t = setTimeout(() => load({ silent: true }), 250);
-    return () => clearTimeout(t);
-  }, [busca]);
 
   const brindesFiltrados = useMemo(() => {
     let lista = brindes;
+    // Filtro por busca (sem acento)
+    if (busca && busca.trim()) {
+      const q = normalize(busca);
+      lista = lista.filter((b) =>
+        normalize(b.nome).includes(q) ||
+        normalize(b.codigo).includes(q)
+      );
+    }
     if (faixaSelecionada) {
       lista = lista.filter((b) => {
         const c = Number(b.custo_unitario || 0);

@@ -435,10 +435,11 @@ export async function relEstoque() {
 
 export async function relSaidas(params = {}) {
   let q = supabase.from('movimentacoes')
-    .select('*, brindes(nome)').eq('tipo', 'saida')
+    .select('*, brindes!inner(nome, nivel_id)').eq('tipo', 'saida')
     .order('data', { ascending: false }).order('id', { ascending: false });
   if (params.inicio) q = q.gte('data', params.inicio);
   if (params.fim)    q = q.lte('data', params.fim);
+  if (params.nivel)  q = q.eq('brindes.nivel_id', params.nivel);
   const rows = await handle(q);
   const mapped = (rows || []).map((r) => ({ ...r, brinde: r.brindes?.nome }));
   return {
@@ -449,10 +450,11 @@ export async function relSaidas(params = {}) {
 }
 
 export async function relPorDestinatario(params = {}) {
-  let q = supabase.from('movimentacoes').select('*').eq('tipo', 'saida').not('destinatario_nome', 'is', null);
+  let q = supabase.from('movimentacoes').select('*, brindes!inner(nivel_id)').eq('tipo', 'saida').not('destinatario_nome', 'is', null);
   if (params.inicio) q = q.gte('data', params.inicio);
   if (params.fim)    q = q.lte('data', params.fim);
   if (params.tipo)   q = q.eq('tipo_solicitante', params.tipo);
+  if (params.nivel)  q = q.eq('brindes.nivel_id', params.nivel);
   const rows = await handle(q);
   const agrup = {};
   (rows || []).forEach((r) => {
@@ -480,9 +482,10 @@ export async function relPatrocinios(params = {}) {
 }
 
 export async function relCustoEntregas(params = {}) {
-  let q = supabase.from('movimentacoes').select('*').eq('tipo', 'saida');
+  let q = supabase.from('movimentacoes').select('*, brindes!inner(nivel_id)').eq('tipo', 'saida');
   if (params.inicio) q = q.gte('data', params.inicio);
   if (params.fim)    q = q.lte('data', params.fim);
+  if (params.nivel)  q = q.eq('brindes.nivel_id', params.nivel);
   const rows = (await handle(q)) || [];
   const total_custo = rows.reduce((s, r) => s + Number(r.custo_total || 0), 0);
   const unidades    = rows.reduce((s, r) => s + r.quantidade, 0);
@@ -518,4 +521,114 @@ export async function cancelarReservaManual(reservaId) {
     .in('status', ['reservado', 'pensando']);
   if (error) { console.error('cancelarReservaManual err', error); throw error; }
   return true;
+}
+
+
+/* ============================================================================
+ * RELATÓRIOS — Brindes via orçamento, conversão, top entregues, por nível
+ * ========================================================================= */
+
+// Lista detalhada de brindes via orçamento (reservas com info de cliente/orçamento)
+export async function relBrindesViaOrcamento(params = {}) {
+  let q = supabase.from('reservas_brinde')
+    .select('*, brindes!inner(id, nome, custo_unitario, valor_percebido, nivel_id, niveis_brinde(id, nome, cor))')
+    .order('criada_em', { ascending: false });
+  if (params.inicio) q = q.gte('criada_em', params.inicio);
+  if (params.fim)    q = q.lte('criada_em', params.fim);
+  if (params.nivel)  q = q.eq('brindes.nivel_id', params.nivel);
+  const rows = await handle(q);
+
+  const statusGrupo = (s) => {
+    if (s === 'confirmado') return 'entregue';
+    if (s === 'cancelada' || s === 'expirada') return 'nao_entregue';
+    return 'aguardando'; // reservado, pensando
+  };
+
+  return (rows || []).map((r) => ({
+    id: r.id,
+    cliente: r.orcamento_info || '—',
+    orcamento_id: r.orcamento_id,
+    brinde_nome: r.brindes?.nome || '—',
+    nivel_nome: r.brindes?.niveis_brinde?.nome || null,
+    custo: Number(r.brindes?.custo_unitario || 0),
+    vpp: Number(r.brindes?.valor_percebido || 0),
+    status: r.status,
+    grupo: statusGrupo(r.status),
+    criada_em: r.criada_em,
+    expira_em: r.expira_em,
+    confirmada_em: r.confirmada_em || null,
+    cancelada_em: r.cancelada_em || null,
+  }));
+}
+
+// Taxa de conversão dos brindes via orçamento
+export async function relConversaoBrinde(params = {}) {
+  const rows = await relBrindesViaOrcamento(params);
+  const total = rows.length;
+  const entregues     = rows.filter((r) => r.grupo === 'entregue').length;
+  const naoEntregues  = rows.filter((r) => r.grupo === 'nao_entregue').length;
+  const aguardando    = rows.filter((r) => r.grupo === 'aguardando').length;
+  const fechados = entregues + naoEntregues;
+  const taxa = fechados > 0 ? (entregues / fechados) : 0;
+  const custoEntregue = rows.filter((r) => r.grupo === 'entregue').reduce((s, r) => s + r.custo, 0);
+  const vppEntregue   = rows.filter((r) => r.grupo === 'entregue').reduce((s, r) => s + r.vpp, 0);
+  return { total, entregues, naoEntregues, aguardando, taxa, custoEntregue, vppEntregue };
+}
+
+// Saídas agrupadas por nível
+export async function relPorNivel(params = {}) {
+  let q = supabase.from('movimentacoes')
+    .select('*, brindes(id, nome, nivel_id, niveis_brinde(id, nome, cor, ordem))')
+    .eq('tipo', 'saida');
+  if (params.inicio) q = q.gte('data', params.inicio);
+  if (params.fim)    q = q.lte('data', params.fim);
+  const rows = (await handle(q)) || [];
+  const agrup = {};
+  rows.forEach((r) => {
+    const nivel = r.brindes?.niveis_brinde;
+    const key = nivel?.id || 'sem';
+    if (!agrup[key]) agrup[key] = {
+      nivel_id:   nivel?.id || null,
+      nivel_nome: nivel?.nome || 'Sem nível',
+      nivel_cor:  nivel?.cor  || null,
+      ordem:      nivel?.ordem || 999,
+      unidades: 0,
+      custo_total: 0,
+      variedade: new Set(),
+    };
+    agrup[key].unidades    += r.quantidade;
+    agrup[key].custo_total += Number(r.custo_total);
+    agrup[key].variedade.add(r.brinde_id);
+  });
+  return Object.values(agrup)
+    .map((g) => ({ ...g, variedade: g.variedade.size }))
+    .sort((a, b) => a.ordem - b.ordem);
+}
+
+// Top brindes mais entregues (ranking)
+export async function relTopBrindes(params = {}) {
+  let q = supabase.from('movimentacoes')
+    .select('*, brindes!inner(id, nome, custo_unitario, valor_percebido, nivel_id, niveis_brinde(nome))')
+    .eq('tipo', 'saida');
+  if (params.inicio) q = q.gte('data', params.inicio);
+  if (params.fim)    q = q.lte('data', params.fim);
+  if (params.nivel)  q = q.eq('brindes.nivel_id', params.nivel);
+  const rows = (await handle(q)) || [];
+  const agrup = {};
+  rows.forEach((r) => {
+    const id = r.brinde_id;
+    if (!agrup[id]) agrup[id] = {
+      brinde_id: id,
+      brinde_nome: r.brindes?.nome || '—',
+      nivel_nome: r.brindes?.niveis_brinde?.nome || null,
+      vpp_unit: Number(r.brindes?.valor_percebido || 0),
+      unidades: 0,
+      custo_total: 0,
+      vpp_total: 0,
+    };
+    agrup[id].unidades    += r.quantidade;
+    agrup[id].custo_total += Number(r.custo_total);
+    agrup[id].vpp_total   += Number(r.brindes?.valor_percebido || 0) * r.quantidade;
+  });
+  return Object.values(agrup).sort((a, b) => b.unidades - a.unidades);
 }

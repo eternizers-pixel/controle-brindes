@@ -284,7 +284,7 @@ export default function Relatorios() {
     });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-5xl mx-auto">
       <header>
         <h1 className="text-2xl font-bold text-slate-800">Relatórios</h1>
         <p className="text-slate-500 text-sm">Filtre, visualize e exporte em PDF ou Excel</p>

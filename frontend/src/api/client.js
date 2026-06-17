@@ -544,9 +544,22 @@ export async function relBrindesViaOrcamento(params = {}) {
     return 'aguardando'; // reservado, pensando
   };
 
-  return (rows || []).map((r) => ({
+  return (rows || []).map((r) => {
+    // orcamento_info pode ser objeto JSON {customerName, customerPhone, totalValue}
+    // ou string. Extrair nome do cliente com fallbacks.
+    let cliente = '—';
+    let valorOrc = null;
+    const info = r.orcamento_info;
+    if (info && typeof info === 'object') {
+      cliente = info.customerName || info.customer_name || info.cliente || '—';
+      valorOrc = info.totalValue || info.total_value || info.valor || null;
+    } else if (typeof info === 'string' && info.trim()) {
+      cliente = info;
+    }
+    return ({
     id: r.id,
-    cliente: r.orcamento_info || '—',
+    cliente,
+    valor_orcamento: valorOrc,
     orcamento_id: r.orcamento_id,
     brinde_nome: r.brindes?.nome || '—',
     nivel_nome: r.brindes?.niveis_brinde?.nome || null,
@@ -558,7 +571,8 @@ export async function relBrindesViaOrcamento(params = {}) {
     expira_em: r.expira_em,
     confirmada_em: r.confirmada_em || null,
     cancelada_em: r.cancelada_em || null,
-  }));
+    });
+  });
 }
 
 // Taxa de conversão dos brindes via orçamento

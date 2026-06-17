@@ -87,7 +87,7 @@ export default function Estoque() {
         arr.sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR'));
     }
     return arr;
-  }, [brindes, faixaSelecionada, ordem]);
+  }, [brindes, busca, faixaSelecionada, ordem]);
 
   const setFaixa = (key) => {
     if (!key) searchParams.delete('faixa'); else searchParams.set('faixa', key);

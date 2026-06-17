@@ -19,8 +19,18 @@ export const TIPOS_SOLICITANTE = [
   { value: 'evento',     label: 'Evento' },
   { value: 'associacao', label: 'Associação' },
   { value: 'cliente',    label: 'Cliente' },
+  { value: 'zelo',       label: 'Zelo' },
+  { value: 'orcamento',  label: 'Orçamento' },
   { value: 'outro',      label: 'Outro' },
 ];
+
+// Normaliza texto pra comparar sem acentos: "NÉCESSAIRE" -> "necessaire"
+export const normalize = (s) =>
+  String(s || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
 
 export const labelTipo = (v) =>
   TIPOS_SOLICITANTE.find((t) => t.value === v)?.label || (v || '—');

@@ -3,7 +3,7 @@ import {
   ArrowDownCircle, ArrowUpCircle, Filter, Trash2, MessageSquare, X, Calendar,
   Package, Users, Tag, DollarSign, Edit2, Save, Clock,
 } from 'lucide-react';
-import { getMovimentacoes, getBrindes, removerMovimentacao, atualizarMovimentacao, getReservasAtivas } from '../api/client';
+import { getMovimentacoes, getBrindes, removerMovimentacao, atualizarMovimentacao, getReservasAtivas, cancelarReservaManual } from '../api/client';
 import { formatBRL, formatInt, formatDate, labelTipo, TIPOS_SOLICITANTE } from '../utils/helpers';
 import Modal from '../components/Modal';
 import { useToast } from '../components/Toast';
@@ -169,7 +169,20 @@ export default function Movimentacoes() {
                     <strong>{b?.nome || 'Brinde ?'}</strong>
                     <span className="text-slate-500"> — {tipoLabel}, válido até {exp}</span>
                   </div>
-                  <span className="text-amber-700 font-semibold">RESERVADO</span>
+                  <button
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      if (!confirm('Liberar essa reserva? O brinde volta a ficar disponível.')) return;
+                      try {
+                        await cancelarReservaManual(r.id);
+                        toast.success('Reserva liberada.');
+                        load();
+                      } catch (err) {
+                        toast.error('Erro ao liberar: ' + (err?.message || err));
+                      }
+                    }}
+                    className="text-xs px-2 py-1 rounded bg-amber-600 text-white hover:bg-amber-700 font-semibold"
+                  >Liberar</button>
                 </div>
               );
             })}

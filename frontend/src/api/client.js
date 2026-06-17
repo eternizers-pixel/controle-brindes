@@ -509,3 +509,13 @@ export async function getReservasAtivas() {
   if (error) { console.error('getReservasAtivas err', error); return []; }
   return data || [];
 }
+
+export async function cancelarReservaManual(reservaId) {
+  const { error } = await supabase
+    .from('reservas_brinde')
+    .update({ status: 'cancelada', cancelada_em: new Date().toISOString() })
+    .eq('id', reservaId)
+    .in('status', ['reservado', 'pensando']);
+  if (error) { console.error('cancelarReservaManual err', error); throw error; }
+  return true;
+}

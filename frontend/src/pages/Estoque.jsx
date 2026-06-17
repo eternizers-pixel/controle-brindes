@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Search, Send, Package2, X, Clock } from 'lucide-react';
 import { getBrindes, getReservasAtivas } from '../api/client';
-import { formatInt, FAIXAS_CUSTO, getFaixaByKey } from '../utils/helpers';
+import { formatInt, FAIXAS_CUSTO, getFaixaByKey, normalize } from '../utils/helpers';
 import SaidaModal from '../components/SaidaModal';
 
 const ORDENACOES = [
@@ -37,20 +37,24 @@ export default function Estoque() {
   const load = async ({ silent = false } = {}) => {
     if (!silent) setLoading(true);
     try {
-      const data = await getBrindes({ search: busca, status: 'ativo' });
+      const data = await getBrindes({ status: 'ativo' });
       const resAtivas = await getReservasAtivas();
       setReservas(resAtivas);
       setBrindes(data);
     } finally { if (!silent) setLoading(false); }
   };
   useEffect(() => { load(); }, []);
-  useEffect(() => {
-    const t = setTimeout(() => load({ silent: true }), 250);
-    return () => clearTimeout(t);
-  }, [busca]);
 
   const brindesFiltrados = useMemo(() => {
     let lista = brindes;
+    // Filtro por busca (sem acento)
+    if (busca && busca.trim()) {
+      const q = normalize(busca);
+      lista = lista.filter((b) =>
+        normalize(b.nome).includes(q) ||
+        normalize(b.codigo).includes(q)
+      );
+    }
     if (faixaSelecionada) {
       lista = lista.filter((b) => {
         const c = Number(b.custo_unitario || 0);

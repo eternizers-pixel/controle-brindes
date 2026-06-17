@@ -30,6 +30,8 @@ export default function Movimentacoes() {
     setLoading(true);
     try {
       const params = Object.fromEntries(Object.entries(filtros).filter(([_, v]) => v));
+      const resAtivas = await getReservasAtivas();
+      setReservas(resAtivas);
       const data = await getMovimentacoes(params);
       setMovs(data);
     } finally { setLoading(false); }

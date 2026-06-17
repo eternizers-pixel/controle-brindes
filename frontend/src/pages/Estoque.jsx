@@ -38,6 +38,8 @@ export default function Estoque() {
     if (!silent) setLoading(true);
     try {
       const data = await getBrindes({ search: busca, status: 'ativo' });
+      const resAtivas = await getReservasAtivas();
+      setReservas(resAtivas);
       setBrindes(data);
     } finally { if (!silent) setLoading(false); }
   };

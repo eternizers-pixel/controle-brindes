@@ -297,13 +297,25 @@ export default function Dashboard() {
           ) : (
             <ul className="divide-y divide-slate-100">
               {ultimas_saidas.map((s) => (
-                <li key={s.id} className="py-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="font-medium text-slate-700">{s.brinde_nome}</span>
-                    <span className="text-rose-600 font-semibold">−{s.quantidade}</span>
-                  </div>
-                  <div className="text-xs text-slate-500">
-                    {formatDate(s.data)} · {s.destinatario_nome || 'sem destinatário'} {s.tipo_solicitante ? `(${labelTipo(s.tipo_solicitante)})` : ''}
+                <li key={s.id} className="py-2 flex items-start gap-2.5">
+                  {s.brinde_foto ? (
+                    <img src={s.brinde_foto} alt="" className="w-10 h-10 rounded object-cover border border-slate-200 flex-shrink-0" />
+                  ) : (
+                    <div className="w-10 h-10 rounded bg-slate-100 flex items-center justify-center text-slate-400 text-lg flex-shrink-0">📦</div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex justify-between text-sm gap-2">
+                      <span className="font-medium text-slate-700 truncate">
+                        {s.brinde_nome}
+                        {s.brinde_codigo && (
+                          <span className="text-[10px] text-slate-500 font-mono ml-1">· {s.brinde_codigo}</span>
+                        )}
+                      </span>
+                      <span className="text-rose-600 font-semibold flex-shrink-0">−{s.quantidade}</span>
+                    </div>
+                    <div className="text-xs text-slate-500">
+                      {formatDate(s.data)} · {s.destinatario_nome || 'sem destinatário'} {s.tipo_solicitante ? `(${labelTipo(s.tipo_solicitante)})` : ''}
+                    </div>
                   </div>
                 </li>
               ))}

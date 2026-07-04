@@ -215,10 +215,22 @@ export default function Movimentacoes() {
                   {saida ? <ArrowDownCircle size={22}/> : <ArrowUpCircle size={22}/>}
                 </div>
 
+                {/* Foto do brinde */}
+                {m.brinde_foto ? (
+                  <img src={m.brinde_foto} alt="" className="w-10 h-10 sm:w-12 sm:h-12 rounded object-cover border border-slate-200 flex-shrink-0" />
+                ) : (
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded bg-slate-100 flex items-center justify-center text-slate-400 text-lg flex-shrink-0">📦</div>
+                )}
+
                 {/* Info principal */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-baseline justify-between gap-2">
-                    <span className="font-semibold text-slate-800 truncate">{m.brinde_nome}</span>
+                    <span className="font-semibold text-slate-800 truncate">
+                      {m.brinde_nome}
+                      {m.brinde_codigo && (
+                        <span className="text-[11px] text-slate-500 font-mono ml-1.5">· {m.brinde_codigo}</span>
+                      )}
+                    </span>
                     <span className={`text-lg font-bold flex-shrink-0 ${saida ? 'text-rose-600' : 'text-emerald-600'}`}>
                       {saida ? '−' : '+'}{formatInt(m.quantidade)}
                     </span>
@@ -329,8 +341,18 @@ export default function Movimentacoes() {
                   </span>
                 </span>
               </div>
-              <div className="text-[11px] text-slate-600 mt-1.5">
-                <strong>{detalheFor.brinde_nome}</strong>
+              <div className="mt-1.5 flex items-center gap-2">
+                {detalheFor.brinde_foto ? (
+                  <img src={detalheFor.brinde_foto} alt="" className="w-9 h-9 rounded object-cover border border-slate-200 flex-shrink-0" />
+                ) : (
+                  <div className="w-9 h-9 rounded bg-slate-100 flex items-center justify-center text-slate-400 flex-shrink-0">📦</div>
+                )}
+                <div className="text-[11px] text-slate-700 leading-tight">
+                  <strong className="text-slate-800">{detalheFor.brinde_nome}</strong>
+                  {detalheFor.brinde_codigo && (
+                    <div className="text-slate-500 font-mono text-[10px] mt-0.5">{detalheFor.brinde_codigo}</div>
+                  )}
+                </div>
               </div>
             </div>
 

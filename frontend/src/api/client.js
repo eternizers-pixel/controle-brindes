@@ -146,7 +146,7 @@ export async function getMovimentacoes(params = {}) {
 
   let q = supabase
     .from('movimentacoes')
-    .select('*, brindes(nome, foto)')
+    .select('*, brindes(nome, foto, codigo)')
     .order('data', { ascending: false })
     .order('id',   { ascending: false })
     .limit(limit);
@@ -163,6 +163,7 @@ export async function getMovimentacoes(params = {}) {
     ...m,
     brinde_nome: m.brindes?.nome,
     brinde_foto: m.brindes?.foto,
+    brinde_codigo: m.brindes?.codigo,
   }));
 }
 

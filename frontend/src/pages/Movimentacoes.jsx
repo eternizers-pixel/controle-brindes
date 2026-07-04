@@ -15,7 +15,7 @@ export default function Movimentacoes() {
   const [brindes, setBrindes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filtros, setFiltros] = useState({
-    tipo: '', brinde_id: '', destinatario: '', tipo_solicitante: '', inicio: '', fim: '',
+    tipo: '', brinde_id: '', destinatario: '', tipo_solicitante: '', inicio: '', fim: '', periodo: 'todos',
   });
   const [detalheFor, setDetalheFor] = useState(null);
   const [mostrarFiltros, setMostrarFiltros] = useState(false);
@@ -125,23 +125,70 @@ export default function Movimentacoes() {
       {/* Filtros (colapsáveis) */}
       {mostrarFiltros && (
         <div className="card p-4">
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            <select className="input" value={filtros.tipo} onChange={set('tipo')}>
-              <option value="">Tipo (todos)</option>
-              <option value="entrada">Entradas</option>
-              <option value="saida">Saídas</option>
-            </select>
-            <select className="input" value={filtros.brinde_id} onChange={set('brinde_id')}>
-              <option value="">Brinde (todos)</option>
-              {brindes.map((b) => <option key={b.id} value={b.id}>{b.nome}</option>)}
-            </select>
-            <select className="input" value={filtros.tipo_solicitante} onChange={set('tipo_solicitante')}>
-              <option value="">Solicitante (todos)</option>
-              {TIPOS_SOLICITANTE.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-            </select>
-            <input className="input" placeholder="Destinatário…" value={filtros.destinatario} onChange={set('destinatario')} />
-            <input className="input" type="date" value={filtros.inicio} onChange={set('inicio')} />
-            <input className="input" type="date" value={filtros.fim} onChange={set('fim')} />
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <div>
+              <label className="block text-xs text-slate-500 mb-1">Tipo</label>
+              <select className="input w-full" value={filtros.tipo} onChange={set('tipo')}>
+                <option value="">Todos</option>
+                <option value="entrada">Entradas</option>
+                <option value="saida">Saídas</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs text-slate-500 mb-1">Brinde</label>
+              <select className="input w-full" value={filtros.brinde_id} onChange={set('brinde_id')}>
+                <option value="">Todos</option>
+                {brindes.map((b) => <option key={b.id} value={b.id}>{b.nome}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs text-slate-500 mb-1">Solicitante</label>
+              <select className="input w-full" value={filtros.tipo_solicitante} onChange={set('tipo_solicitante')}>
+                <option value="">Todos</option>
+                {TIPOS_SOLICITANTE.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs text-slate-500 mb-1">Destinatário</label>
+              <input className="input w-full" placeholder="Nome do destinatário…" value={filtros.destinatario} onChange={set('destinatario')} />
+            </div>
+            <div>
+              <label className="block text-xs text-slate-500 mb-1">Período</label>
+              <select className="input w-full" value={filtros.periodo || 'todos'} onChange={(e) => {
+                const preset = e.target.value;
+                const fmt = (d) => {
+                  const y = d.getFullYear(), M = String(d.getMonth()+1).padStart(2,'0'), D = String(d.getDate()).padStart(2,'0');
+                  return `${y}-${M}-${D}`;
+                };
+                const hoje = new Date();
+                let inicio = '', fim = '';
+                if (preset === 'mes_atual')      { inicio = fmt(new Date(hoje.getFullYear(), hoje.getMonth(), 1)); fim = fmt(hoje); }
+                else if (preset === 'ultimos_3') { const d = new Date(hoje); d.setMonth(d.getMonth()-3); inicio = fmt(d); fim = fmt(hoje); }
+                else if (preset === 'ultimos_6') { const d = new Date(hoje); d.setMonth(d.getMonth()-6); inicio = fmt(d); fim = fmt(hoje); }
+                else if (preset === 'ano')       { inicio = fmt(new Date(hoje.getFullYear(), 0, 1)); fim = fmt(hoje); }
+                else if (preset === 'personalizado') { /* mantem */ inicio = filtros.inicio; fim = filtros.fim; }
+                setFiltros((f) => ({ ...f, periodo: preset, inicio, fim }));
+              }}>
+                <option value="todos">Todos</option>
+                <option value="mes_atual">Mês atual</option>
+                <option value="ultimos_3">Últimos 3 meses</option>
+                <option value="ultimos_6">Últimos 6 meses</option>
+                <option value="ano">Ano</option>
+                <option value="personalizado">Personalizado</option>
+              </select>
+            </div>
+            {filtros.periodo === 'personalizado' && (
+              <>
+                <div>
+                  <label className="block text-xs text-slate-500 mb-1">Data inicial</label>
+                  <input className="input w-full" type="date" value={filtros.inicio} onChange={set('inicio')} />
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-500 mb-1">Data final</label>
+                  <input className="input w-full" type="date" value={filtros.fim} onChange={set('fim')} />
+                </div>
+              </>
+            )}
           </div>
           {filtroAtivo && (
             <div className="flex justify-end mt-3">

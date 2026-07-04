@@ -49,8 +49,9 @@ export default function Dashboard() {
   const totalSocialMes =
     Number(totais.custo_entregues_mes || 0) + invest.mensal + invest.unicasNoMes;
 
+  const truncLabel = (s) => s && s.length > 22 ? s.slice(0, 22) + '…' : (s || '');
   const barData = {
-    labels: mais_entregues.map((b) => b.nome),
+    labels: mais_entregues.map((b) => truncLabel(b.nome)),
     datasets: [{
       label: 'Unidades entregues',
       data: mais_entregues.map((b) => b.total),
@@ -237,10 +238,20 @@ export default function Dashboard() {
           ) : (
             <ul className="divide-y divide-slate-100">
               {estoque_baixo.map((b) => (
-                <li key={b.id} className="flex items-center justify-between py-2">
-                  <span className="text-sm text-slate-700">{b.nome}</span>
-                  <span className={`text-xs font-semibold ${b.quantidade_estoque <= 0 ? 'text-rose-600' : 'text-amber-600'}`}>
-                    {b.quantidade_estoque} / mín {b.estoque_minimo}
+                <li key={b.id} className="flex items-center gap-2.5 py-2">
+                  {b.foto ? (
+                    <img src={b.foto} alt="" className="w-10 h-10 rounded object-cover border border-slate-200 flex-shrink-0" />
+                  ) : (
+                    <div className="w-10 h-10 rounded bg-slate-100 flex items-center justify-center text-slate-400 text-lg flex-shrink-0">📦</div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm text-slate-700 truncate">{b.nome}</div>
+                    {b.codigo && (
+                      <div className="text-[10px] text-slate-500 font-mono truncate">{b.codigo}</div>
+                    )}
+                  </div>
+                  <span className={`text-xs font-semibold flex-shrink-0 ${(b.quantidade_estoque || 0) <= 0 ? 'text-rose-600' : 'text-amber-600'}`}>
+                    {b.quantidade_estoque || 0}{b.estoque_minimo > 0 ? ` / mín ${b.estoque_minimo}` : ''}
                   </span>
                 </li>
               ))}
@@ -259,10 +270,14 @@ export default function Dashboard() {
           </div>
           {mais_entregues.length === 0
             ? <div className="text-slate-400 text-sm">Sem saídas registradas ainda.</div>
-            : <div style={{ height: 280 }}><Bar data={barData} options={{
+            : <div style={{ height: Math.max(220, mais_entregues.length * 42 + 40) }}><Bar data={barData} options={{
+                indexAxis: 'y',
                 responsive: true, maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: { y: { beginAtZero: true } },
+                plugins: { legend: { display: false }, tooltip: { callbacks: { title: (ctx) => mais_entregues[ctx[0]?.dataIndex]?.nome || ctx[0]?.label } } },
+                scales: {
+                  x: { beginAtZero: true, ticks: { precision: 0 } },
+                  y: { ticks: { font: { size: 11 }, autoSkip: false } }
+                },
               }} /></div>}
         </div>
 

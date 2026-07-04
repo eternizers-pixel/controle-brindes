@@ -336,9 +336,6 @@ export default function Dashboard() {
               ))}
             </ul>
           )}
-          <Link to="/movimentacoes" className="mt-3 w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium text-brand-700 bg-brand-50 hover:bg-brand-100 transition-colors">
-            Ver todas as movimentações <ArrowRight size={14} />
-          </Link>
         </div>
 
         <div className="card p-5 overflow-hidden min-w-0">
@@ -385,9 +382,6 @@ export default function Dashboard() {
               </table>
             </>
           )}
-          <Link to="/relatorios" className="mt-3 w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium text-brand-700 bg-brand-50 hover:bg-brand-100 transition-colors">
-            Ver todos os destinatários <ArrowRight size={14} />
-          </Link>
         </div>
       </div>
     </div>

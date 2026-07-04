@@ -227,14 +227,16 @@ export default function Movimentacoes() {
                   <div className="flex items-baseline justify-between gap-2">
                     <span className="font-semibold text-slate-800 truncate">
                       {m.brinde_nome}
-                      {m.brinde_codigo && (
-                        <span className="text-[11px] text-slate-500 font-mono ml-1.5">· {m.brinde_codigo}</span>
-                      )}
                     </span>
                     <span className={`text-lg font-bold flex-shrink-0 ${saida ? 'text-rose-600' : 'text-emerald-600'}`}>
                       {saida ? '−' : '+'}{formatInt(m.quantidade)}
                     </span>
                   </div>
+                  {m.brinde_codigo && (
+                    <div className="text-[11px] text-slate-500 font-mono truncate mt-0.5">
+                      {m.brinde_codigo}
+                    </div>
+                  )}
                   <div className="flex items-center gap-2 text-xs text-slate-500 mt-0.5 flex-wrap">
                     <span className="flex items-center gap-1">
                       <Calendar size={11}/> {formatDate(m.data)}

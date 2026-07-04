@@ -297,11 +297,11 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <div className="card p-5">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-semibold text-slate-800 flex items-center gap-2">
-              <Calendar size={18} className="text-brand-500" /> Últimas saídas
+      <div className="grid gap-6 lg:grid-cols-2 min-w-0">
+        <div className="card p-5 overflow-hidden min-w-0">
+          <div className="flex items-center justify-between mb-3 gap-2">
+            <h3 className="font-semibold text-slate-800 flex items-center gap-2 min-w-0">
+              <Calendar size={18} className="text-brand-500 flex-shrink-0" /> <span className="truncate">Últimas saídas</span>
             </h3>
             <Link to="/movimentacoes" className="text-xs text-brand-600 hover:text-brand-800 flex items-center gap-1">
               Ver tudo <ArrowRight size={12} />
@@ -328,7 +328,7 @@ export default function Dashboard() {
                       </span>
                       <span className="text-rose-600 font-semibold flex-shrink-0">−{s.quantidade}</span>
                     </div>
-                    <div className="text-xs text-slate-500">
+                    <div className="text-xs text-slate-500 truncate">
                       {formatDate(s.data)} · {s.destinatario_nome || 'sem destinatário'} {s.tipo_solicitante ? `(${labelTipo(s.tipo_solicitante)})` : ''}
                     </div>
                   </div>
@@ -336,11 +336,14 @@ export default function Dashboard() {
               ))}
             </ul>
           )}
+          <Link to="/movimentacoes" className="mt-3 w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium text-brand-700 bg-brand-50 hover:bg-brand-100 transition-colors">
+            Ver todas as movimentações <ArrowRight size={14} />
+          </Link>
         </div>
 
-        <div className="card p-5">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-semibold text-slate-800">Destinatários que mais receberam</h3>
+        <div className="card p-5 overflow-hidden min-w-0">
+          <div className="flex items-center justify-between mb-3 gap-2">
+            <h3 className="font-semibold text-slate-800 min-w-0 truncate">Destinatários que mais receberam</h3>
             <Link to="/relatorios" className="text-xs text-brand-600 hover:text-brand-800 flex items-center gap-1">
               Ver tudo <ArrowRight size={12} />
             </Link>
@@ -382,6 +385,9 @@ export default function Dashboard() {
               </table>
             </>
           )}
+          <Link to="/relatorios" className="mt-3 w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium text-brand-700 bg-brand-50 hover:bg-brand-100 transition-colors">
+            Ver todos os destinatários <ArrowRight size={14} />
+          </Link>
         </div>
       </div>
     </div>

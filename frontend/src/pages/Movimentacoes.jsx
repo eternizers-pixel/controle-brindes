@@ -41,7 +41,7 @@ export default function Movimentacoes() {
   useEffect(() => { load(); }, [filtros]);
 
   const set = (k) => (e) => setFiltros({ ...filtros, [k]: e.target.value });
-  const limpar = () => setFiltros({ tipo: '', brinde_id: '', destinatario: '', tipo_solicitante: '', inicio: '', fim: '' });
+  const limpar = () => setFiltros({ tipo: '', brinde_id: '', destinatario: '', tipo_solicitante: '', inicio: '', fim: '', periodo: 'todos' });
 
   const estornar = async (mov) => {
     if (!window.confirm('Estornar esta movimentação? O estoque será revertido. Esta ação não pode ser desfeita.')) return;
@@ -97,7 +97,11 @@ export default function Movimentacoes() {
 
   const setEdit = (k) => (e) => setFormEdit({ ...formEdit, [k]: e.target.value });
 
-  const filtroAtivo = Object.values(filtros).some((v) => v);
+  const filtroAtivo = Object.entries(filtros).some(([k, v]) => {
+    if (!v) return false;
+    if (k === 'periodo' && v === 'todos') return false;
+    return true;
+  });
 
   return (
     <div className="space-y-4 max-w-5xl mx-auto">

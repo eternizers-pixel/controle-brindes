@@ -332,7 +332,7 @@ export async function getDestinatarios({ search = '', tipo } = {}) {
 export async function getDashboard() {
   const [brindes, movsRaw] = await Promise.all([
     handle(supabase.from('brindes').select('*').eq('status', 'ativo')),
-    handle(supabase.from('movimentacoes').select('*, brindes(nome)')),
+    handle(supabase.from('movimentacoes').select('*, brindes(nome, foto, codigo)')),
   ]);
   const movs = movsRaw || [];
   const lista = brindes || [];
@@ -402,7 +402,12 @@ export async function getDashboard() {
     .filter((m) => m.tipo === 'saida')
     .sort((a, b) => b.data.localeCompare(a.data) || b.id - a.id)
     .slice(0, 8)
-    .map((m) => ({ ...m, brinde_nome: m.brindes?.nome }));
+    .map((m) => ({
+      ...m,
+      brinde_nome: m.brindes?.nome,
+      brinde_foto: m.brindes?.foto,
+      brinde_codigo: m.brindes?.codigo,
+    }));
 
   return {
     totais: {

@@ -377,9 +377,9 @@ export async function getDashboard() {
 
   // estoque baixo
   const estoque_baixo = lista
-    .filter((b) => b.estoque_minimo > 0 && b.quantidade_estoque <= b.estoque_minimo)
+    .filter((b) => (b.quantidade_estoque || 0) <= 0 || (b.estoque_minimo > 0 && b.quantidade_estoque <= b.estoque_minimo))
     .sort((a, b) => a.quantidade_estoque - b.quantidade_estoque)
-    .slice(0, 10);
+    .slice(0, 15);
 
   // faixas de custo (definidas em utils/helpers.js)
   const faixas_custo = FAIXAS_CUSTO.map((f) => {

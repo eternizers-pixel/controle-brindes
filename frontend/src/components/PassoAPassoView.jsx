@@ -8,7 +8,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   Power, MoveHorizontal, Ruler, Sliders, HelpCircle, Play, Palette,
   Plus, Trash2, Edit2, Check, X, Camera, ArrowLeft, ArrowRight, Video, Link2,
-  Coffee, Watch, Pen, Package,
+  Beer, Coffee, Watch, Pen, Package,
 } from 'lucide-react';
 import {
   getGravacaoPassos, criarGravacaoPasso, atualizarGravacaoPasso, deletarGravacaoPasso,
@@ -17,30 +17,19 @@ import {
 import { compressImageFile } from '../utils/imagem';
 import { useToast } from './Toast';
 
-// Icones customizados (SVG inline) — sem depender do lucide
-function IconTumbler({ size = 24, strokeWidth = 1.5 }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
-      {/* Tampa */}
-      <path d="M7 3.5h10v2.5H7z" />
-      {/* Corpo do copo */}
-      <path d="M7.5 6l-0.5 14a1 1 0 001 1h8a1 1 0 001-1L16.5 6z" />
-      {/* Linha decorativa (marca) */}
-      <line x1="9" y1="11" x2="15" y2="11" />
-    </svg>
-  );
-}
+// Icone customizado: pulseira em corrente com coracao (estilo semijoia)
 function IconBracelet({ size = 24, strokeWidth = 1.5 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="4"  r="1.5" />
-      <circle cx="18" cy="7"  r="1.5" />
-      <circle cx="20.5" cy="13" r="1.5" />
-      <circle cx="17" cy="19" r="1.5" />
-      <circle cx="12" cy="21" r="1.5" />
-      <circle cx="7"  cy="19" r="1.5" />
-      <circle cx="3.5" cy="13" r="1.5" />
-      <circle cx="6"  cy="7"  r="1.5" />
+      {/* Corrente em forma de U aberto embaixo (tracejada pra parecer corrente) */}
+      <path d="M4 10 C 4 5 8 3 12 3 C 16 3 20 5 20 10" strokeDasharray="1.5 1.8" />
+      {/* Cordao ate o coracao */}
+      <path d="M4 10 C 5 13 8 15 12 15" strokeDasharray="1.5 1.8" />
+      <path d="M20 10 C 19 13 16 15 12 15" strokeDasharray="1.5 1.8" />
+      {/* Fio ate o coracao */}
+      <line x1="12" y1="15" x2="12" y2="17" />
+      {/* Coracao pendente */}
+      <path d="M12 22 C 15.5 19 16 17 14.5 16.2 C 13.7 15.7 12.7 16 12 16.8 C 11.3 16 10.3 15.7 9.5 16.2 C 8 17 8.5 19 12 22 Z" fill="currentColor" strokeWidth="0.5" />
     </svg>
   );
 }
@@ -445,7 +434,7 @@ export default function PassoAPassoView() {
       {/* SELETOR de tipo (aparece so em Posicionar antes de escolher) */}
       {secaoAtiva === 'posicionamento' && mostrarSeletor && (() => {
         const opcoes = [
-          { key: 'copo',     label: 'Copos / Garrafas', Icon: IconTumbler,  cor: 'bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200' },
+          { key: 'copo',     label: 'Copos / Garrafas', Icon: Beer,         cor: 'bg-amber-50 hover:bg-amber-100 text-amber-700 border-amber-200' },
           { key: 'pulseira', label: 'Pulseira',         Icon: IconBracelet, cor: 'bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200' },
           { key: 'caneta',   label: 'Caneta',           Icon: Pen,          cor: 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200' },
           { key: 'outro',    label: 'Outro',            Icon: Package,      cor: 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200' },

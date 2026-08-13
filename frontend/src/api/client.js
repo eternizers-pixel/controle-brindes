@@ -734,3 +734,17 @@ export async function deletarVideoGravacao(path) {
   const { error } = await supabase.storage.from('gravacao').remove([path]);
   if (error) throw error;
 }
+
+
+// Icones/screenshots do EZCAD por metrica (hachura/angulo/velocidade/potencia)
+export async function getIconesGravacao() {
+  const rows = await handle(supabase.from('gravacao_icones').select('*'));
+  const map = {};
+  (rows || []).forEach((r) => { map[r.metrica] = r.foto || null; });
+  return map;
+}
+
+export async function salvarIconeGravacao(metrica, foto) {
+  await handle(supabase.from('gravacao_icones').upsert({ metrica, foto }));
+  return true;
+}

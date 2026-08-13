@@ -16,6 +16,7 @@ import {
   Camera, Copy, Loader2, CloudOff,
 } from 'lucide-react';
 import Modal from '../components/Modal';
+import PassoAPassoView from '../components/PassoAPassoView';
 import {
   getBrindes, atualizarBrinde,
   getProdutosGravacao, atualizarProdutoGravacao,
@@ -82,6 +83,8 @@ function normalizarLista(lista) {
 }
 
 export default function Parametros() {
+  const [view, setView] = useState('produtos'); // 'produtos' | 'passos'
+
   const toast = useToast();
   const [itens, setItens] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -335,16 +338,38 @@ export default function Parametros() {
           </div>
           <div>
             <h1 className="text-xl sm:text-2xl font-bold text-slate-800">Parâmetros de gravação</h1>
-            <p className="text-slate-500 text-sm">Brindes + produtos externos (só pra gravação)</p>
+            <p className="text-slate-500 text-sm">Brindes, produtos externos e passo a passo do processo</p>
           </div>
         </div>
-        <button
-          className="btn-primary text-sm flex-shrink-0"
-          onClick={() => setModalProduto('novo')}
-        >
-          <Plus size={14}/> Novo produto de gravação
-        </button>
+        {view === 'produtos' && (
+          <button
+            className="btn-primary text-sm flex-shrink-0"
+            onClick={() => setModalProduto('novo')}
+          >
+            <Plus size={14}/> Novo produto de gravação
+          </button>
+        )}
       </header>
+
+      {/* Toggle Produtos | Passo a Passo */}
+      <div className="mb-4 inline-flex rounded-lg bg-slate-100 p-1">
+        <button
+          onClick={() => setView('produtos')}
+          className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${view === 'produtos' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-600 hover:text-slate-800'}`}
+        >
+          Produtos
+        </button>
+        <button
+          onClick={() => setView('passos')}
+          className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${view === 'passos' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-600 hover:text-slate-800'}`}
+        >
+          Passo a Passo
+        </button>
+      </div>
+
+      {view === 'passos' ? (
+        <PassoAPassoView />
+      ) : (
 
       <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
         {/* Lista (esquerda) */}
@@ -559,6 +584,7 @@ export default function Parametros() {
           )}
         </div>
       </div>
+      )}
 
       <ProdutoGravacaoModal
         open={!!modalProduto}

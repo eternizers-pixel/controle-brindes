@@ -71,6 +71,22 @@ function detectVideoType(url) {
   return 'link';
 }
 
+// Card visual pra cada parametro (Hachura, Angulo, Velocidade, Potencia)
+function ParamCard({ label, value, color }) {
+  const palette = {
+    blue:    { bg: 'bg-blue-50',    border: 'border-blue-200',    label: 'text-blue-700',    value: 'text-blue-900' },
+    purple:  { bg: 'bg-purple-50',  border: 'border-purple-200',  label: 'text-purple-700',  value: 'text-purple-900' },
+    emerald: { bg: 'bg-emerald-50', border: 'border-emerald-200', label: 'text-emerald-700', value: 'text-emerald-900' },
+    amber:   { bg: 'bg-amber-50',   border: 'border-amber-200',   label: 'text-amber-700',   value: 'text-amber-900' },
+  }[color] || { bg: 'bg-slate-50', border: 'border-slate-200', label: 'text-slate-600', value: 'text-slate-900' };
+  return (
+    <div className={`${palette.bg} border-2 ${palette.border} rounded-xl p-3 sm:p-4 text-center`}>
+      <div className={`text-[10px] sm:text-xs font-bold uppercase tracking-wider ${palette.label} mb-1`}>{label}</div>
+      <div className={`text-2xl sm:text-3xl font-black ${palette.value} tabular-nums`}>{value || '—'}</div>
+    </div>
+  );
+}
+
 // Video native com aspect-ratio dinamico (sem bordas pretas)
 function VideoNativo({ url, filename }) {
   const [aspectRatio, setAspectRatio] = useState(null);
@@ -450,7 +466,11 @@ export default function PassoAPassoView() {
                   <button
                     key={o.key}
                     onClick={() => {
-                      setTipoAtivo((prev) => ({ ...prev, posicionamento: o.key }));
+                      // Mapeia o tipo escolhido em Posicionar tambem pra Parametros
+                      const paramTipo = o.key === 'outro' ? 'copo' : o.key;
+                      const paramCor  = o.key === 'outro' ? 'outras' : null;
+                      setTipoAtivo((prev) => ({ ...prev, posicionamento: o.key, parametros: paramTipo }));
+                      if (paramCor) setCorAtiva(paramCor);
                       setIndexAtual(0);
                       setMostrarSeletor(false);
                     }}
@@ -485,6 +505,11 @@ export default function PassoAPassoView() {
                 <div className="text-xs font-semibold text-indigo-600 uppercase tracking-wide">
                   Passo {indexAtual + 1} de {total}
                 </div>
+                {passoAtual?.parametros?.passagem && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-indigo-100 text-indigo-700 text-xs font-bold">
+                    {passoAtual.parametros.passagem} passagem
+                  </span>
+                )}
                 {secaoAtiva === 'posicionamento' && !mostrarSeletor && (
                   <button
                     onClick={() => { setMostrarSeletor(true); setIndexAtual(0); }}
@@ -577,16 +602,27 @@ export default function PassoAPassoView() {
                         <h2 className="text-2xl sm:text-3xl font-bold text-slate-800 leading-tight mb-3">{passoAtual.titulo}</h2>
                       )}
                     </div>
+                    {/* Grid visual de parametros de gravacao (quando o passo tem eles) */}
+                    {passoAtual.parametros && (
+                      <div className="grid grid-cols-2 gap-3 mb-2">
+                        <ParamCard label="HACHURA"    value={passoAtual.parametros.hachura}    color="blue"    />
+                        <ParamCard label="ÂNGULO"     value={passoAtual.parametros.angulo}     color="purple"  />
+                        <ParamCard label="VELOCIDADE" value={passoAtual.parametros.velocidade} color="emerald" />
+                        <ParamCard label="POTÊNCIA"   value={passoAtual.parametros.potencia}   color="amber"   />
+                      </div>
+                    )}
                     <div className="flex-1">
                       {modoEdicao ? (
                         <textarea
-                          className="input w-full min-h-[240px] text-base leading-relaxed"
+                          className="input w-full min-h-[200px] text-base leading-relaxed"
                           value={editData.descricao}
                           onChange={(e) => setEditData((d) => ({ ...d, descricao: e.target.value }))}
                           placeholder="Descrição detalhada (aceita quebras de linha e emojis ⚠️✅❌)"
                         />
                       ) : (
-                        <p className="text-base sm:text-lg text-slate-700 whitespace-pre-wrap leading-relaxed">{passoAtual.descricao}</p>
+                        passoAtual.descricao && (
+                          <p className="text-base sm:text-lg text-slate-700 whitespace-pre-wrap leading-relaxed">{passoAtual.descricao}</p>
+                        )
                       )}
                     </div>
 

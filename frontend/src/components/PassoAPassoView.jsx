@@ -87,7 +87,6 @@ export default function PassoAPassoView() {
   const [uploadingVideo, setUploadingVideo] = useState(false);
   const [linkVideoInput, setLinkVideoInput] = useState('');
   const [fotoAmpliada, setFotoAmpliada] = useState(null);
-  const [navHint, setNavHint] = useState(null); // 'first' | 'last' — usado ao trocar de secao pra saber onde parar
 
   useEffect(() => {
     (async () => {
@@ -120,14 +119,7 @@ export default function PassoAPassoView() {
   }, [passos, secaoAtiva, secaoDef, tipoAtivoSecao, mostraCores, corAtiva]);
 
   useEffect(() => {
-    if (navHint === 'last' && passosDaSecao.length > 0) {
-      setIndexAtual(passosDaSecao.length - 1);
-    } else {
-      setIndexAtual(0);
-    }
-    setNavHint(null);
     setModoEdicao(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [secaoAtiva, tipoAtivoSecao, corAtiva]);
 
   const passoAtual = passosDaSecao[indexAtual];
@@ -163,30 +155,33 @@ export default function PassoAPassoView() {
     return () => window.removeEventListener('keydown', h);
   }, [fotoAmpliada]);
 
+  // Filtra passos por (secao, tipoAtivo pra aquela secao, corAtiva se aplicavel)
+  const filtrarPassos = (secaoKey) => {
+    const secDef = SECOES.find((s) => s.key === secaoKey);
+    const tipo = tipoAtivo[secaoKey] || (secDef?.tipos?.[0]?.key ?? null);
+    const usaCor = secaoKey === 'parametros' && tipo === 'copo';
+    let f = passos.filter((p) => p.secao === secaoKey);
+    if (secDef?.tipos) f = f.filter((p) => p.tipo_produto === tipo);
+    if (usaCor)        f = f.filter((p) => (p.cor || null) === corAtiva);
+    return f.sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
+  };
+
   const anterior = () => {
-    if (indexAtual > 0) {
-      setIndexAtual((i) => i - 1);
-      return;
-    }
-    // Ja no primeiro passo: volta pra ultima secao anterior
+    if (indexAtual > 0) { setIndexAtual((i) => i - 1); return; }
     const idx = SECOES.findIndex((s) => s.key === secaoAtiva);
     if (idx > 0) {
       const prev = SECOES[idx - 1];
-      setNavHint('last');
+      const prevPassos = filtrarPassos(prev.key);
+      setIndexAtual(Math.max(0, prevPassos.length - 1));
       setSecaoAtiva(prev.key);
-      // tipo/cor voltam pros defaults (que sao os primeiros)
     }
   };
   const proximo = () => {
-    if (indexAtual < total - 1) {
-      setIndexAtual((i) => i + 1);
-      return;
-    }
-    // Ja no ultimo passo: avanca pra proxima secao
+    if (indexAtual < total - 1) { setIndexAtual((i) => i + 1); return; }
     const idx = SECOES.findIndex((s) => s.key === secaoAtiva);
     if (idx < SECOES.length - 1) {
       const next = SECOES[idx + 1];
-      setNavHint('first');
+      setIndexAtual(0);
       setSecaoAtiva(next.key);
     }
   };
@@ -314,7 +309,7 @@ export default function PassoAPassoView() {
           return (
             <button
               key={s.key}
-              onClick={() => setSecaoAtiva(s.key)}
+              onClick={() => { setIndexAtual(0); setSecaoAtiva(s.key); }}
               className={`flex flex-col items-center gap-1 p-2 rounded-lg text-xs font-medium transition-all ${
                 ativa ? 'bg-indigo-500 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'
               }`}
@@ -334,7 +329,7 @@ export default function PassoAPassoView() {
             return (
               <button
                 key={t.key}
-                onClick={() => setTipoAtivo((prev) => ({ ...prev, [secaoAtiva]: t.key }))}
+                onClick={() => { setIndexAtual(0); setTipoAtivo((prev) => ({ ...prev, [secaoAtiva]: t.key })); }}
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                   ativa ? 'bg-amber-500 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                 }`}
@@ -355,7 +350,7 @@ export default function PassoAPassoView() {
             return (
               <button
                 key={c.key}
-                onClick={() => setCorAtiva(c.key)}
+                onClick={() => { setIndexAtual(0); setCorAtiva(c.key); }}
                 className="flex items-center gap-2 group"
                 title={c.label}
               >
@@ -382,6 +377,9 @@ export default function PassoAPassoView() {
         </div>
       ) : (
         <>
+          {!passoAtual ? (
+            <div className="card p-8 text-center text-slate-400 text-sm">Carregando…</div>
+          ) : (
           <div className="card p-5 sm:p-8 min-h-[400px] flex flex-col">
             <div className="flex items-center justify-between mb-4 gap-3">
               <div className="text-xs font-semibold text-indigo-600 uppercase tracking-wide">
@@ -509,6 +507,7 @@ export default function PassoAPassoView() {
               </div>
             </div>
           </div>
+          )}
 
           {/* Navegação */}
           {!modoEdicao && (

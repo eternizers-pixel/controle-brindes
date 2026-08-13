@@ -132,7 +132,7 @@ function VideoNativo({ url, filename, kiosque = false }) {
   const [aspectRatio, setAspectRatio] = useState(null);
   if (kiosque) {
     return (
-      <div className="w-full max-w-[200px] aspect-square mx-auto rounded overflow-hidden bg-black">
+      <div className="w-full max-w-[300px] aspect-square mx-auto rounded overflow-hidden bg-black">
         <video
           src={url}
           controls
@@ -217,7 +217,7 @@ function VideoPlayer({ item, kiosque = false }) {
     // loop no YouTube exige playlist com o proprio id
     const src = `https://www.youtube.com/embed/${id}?autoplay=1&mute=1&loop=1&playlist=${id}&controls=1&modestbranding=1`;
     return kiosque
-      ? <div className="w-full max-w-[200px] aspect-square mx-auto rounded overflow-hidden bg-black"><iframe src={src} className="w-full h-full" allow="autoplay; encrypted-media" allowFullScreen title={item.filename||'video'} /></div>
+      ? <div className="w-full max-w-[300px] aspect-square mx-auto rounded overflow-hidden bg-black"><iframe src={src} className="w-full h-full" allow="autoplay; encrypted-media" allowFullScreen title={item.filename||'video'} /></div>
       : <iframe src={src} className="w-full aspect-video rounded" allow="autoplay; encrypted-media" allowFullScreen title={item.filename||'video'} />;
   }
   if (type === 'drive') {
@@ -225,7 +225,7 @@ function VideoPlayer({ item, kiosque = false }) {
     const id = m ? m[1] : '';
     const embedUrl = id ? `https://drive.google.com/file/d/${id}/preview` : url;
     return kiosque
-      ? <div className="w-full max-w-[200px] aspect-square mx-auto rounded overflow-hidden bg-black"><iframe src={embedUrl} className="w-full h-full" allow="autoplay" allowFullScreen title={item.filename||'video'} /></div>
+      ? <div className="w-full max-w-[300px] aspect-square mx-auto rounded overflow-hidden bg-black"><iframe src={embedUrl} className="w-full h-full" allow="autoplay" allowFullScreen title={item.filename||'video'} /></div>
       : <iframe src={embedUrl} className="w-full aspect-video rounded" allow="autoplay" allowFullScreen title={item.filename||'video'} />;
   }
   if (type === 'vimeo') {
@@ -233,7 +233,7 @@ function VideoPlayer({ item, kiosque = false }) {
     const id = m ? m[1] : '';
     const src = `https://player.vimeo.com/video/${id}?autoplay=1&muted=1&loop=1`;
     return kiosque
-      ? <div className="w-full max-w-[200px] aspect-square mx-auto rounded overflow-hidden bg-black"><iframe src={src} className="w-full h-full" allow="autoplay" allowFullScreen title={item.filename||'video'} /></div>
+      ? <div className="w-full max-w-[300px] aspect-square mx-auto rounded overflow-hidden bg-black"><iframe src={src} className="w-full h-full" allow="autoplay" allowFullScreen title={item.filename||'video'} /></div>
       : <iframe src={src} className="w-full aspect-video rounded" allow="autoplay" allowFullScreen title={item.filename||'video'} />;
   }
   // Estrategia sem bordas pretas: usar aspect-ratio do proprio arquivo.
@@ -806,7 +806,7 @@ export default function PassoAPassoView({ kiosque = false } = {}) {
                             <img
                               src={foto.data}
                               alt={foto.alt || ''}
-                              className={`bg-slate-50 rounded-lg border border-slate-200 cursor-zoom-in ${kiosque ? 'w-full max-w-[200px] aspect-square object-cover mx-auto' : 'w-full max-h-[280px] object-contain'}`}
+                              className={`bg-slate-50 rounded-lg border border-slate-200 cursor-zoom-in ${kiosque ? 'max-h-[30vh] w-auto max-w-full object-contain mx-auto' : 'w-full max-h-[280px] object-contain'}`}
                               onClick={() => !modoEdicao && setFotoAmpliada(foto.data)}
                             />
                             {modoEdicao && (

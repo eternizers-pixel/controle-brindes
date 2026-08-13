@@ -8,6 +8,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   Power, MoveHorizontal, Ruler, Sliders, HelpCircle, Play,
   Plus, Trash2, Edit2, Check, X, Camera, ArrowLeft, ArrowRight, Video, Link2,
+  Coffee, Watch, Pen, Package,
 } from 'lucide-react';
 import {
   getGravacaoPassos, criarGravacaoPasso, atualizarGravacaoPasso, deletarGravacaoPasso,
@@ -22,6 +23,7 @@ const SECOES = [
     { key: 'copo',     label: 'Copos / Garrafas' },
     { key: 'pulseira', label: 'Pulseira' },
     { key: 'caneta',   label: 'Caneta' },
+    { key: 'outro',    label: 'Outro' },
   ]},
   { key: 'altura',         titulo: 'Ajustar Altura do Laser', icone: Ruler,          tipos: null },
   { key: 'parametros',     titulo: 'Parâmetros de Gravação',  icone: Sliders,        tipos: [
@@ -121,6 +123,7 @@ export default function PassoAPassoView() {
   const [uploadingVideo, setUploadingVideo] = useState(false);
   const [linkVideoInput, setLinkVideoInput] = useState('');
   const [fotoAmpliada, setFotoAmpliada] = useState(null);
+  const [mostrarSeletor, setMostrarSeletor] = useState(true); // Posicionamento: mostrar seletor de tipo primeiro
 
   useEffect(() => {
     (async () => {
@@ -154,7 +157,10 @@ export default function PassoAPassoView() {
 
   useEffect(() => {
     setModoEdicao(false);
-  }, [secaoAtiva, tipoAtivoSecao, corAtiva]);
+    // Ao entrar em Posicionar sem tipo escolhido nessa visita, mostrar seletor
+    if (secaoAtiva === 'posicionamento') setMostrarSeletor(true);
+    else setMostrarSeletor(false);
+  }, [secaoAtiva]);
 
   const passoAtual = passosDaSecao[indexAtual];
   const total = passosDaSecao.length;
@@ -202,6 +208,12 @@ export default function PassoAPassoView() {
 
   const anterior = () => {
     if (indexAtual > 0) { setIndexAtual((i) => i - 1); return; }
+    // Se estamos no primeiro passo de Posicionar depois do seletor, volta pro seletor
+    if (secaoAtiva === 'posicionamento' && !mostrarSeletor) {
+      setMostrarSeletor(true);
+      setIndexAtual(0);
+      return;
+    }
     const idx = SECOES.findIndex((s) => s.key === secaoAtiva);
     if (idx > 0) {
       const prev = SECOES[idx - 1];
@@ -355,8 +367,8 @@ export default function PassoAPassoView() {
         })}
       </div>
 
-      {/* Sub-abas por tipo de produto */}
-      {secaoDef?.tipos && (
+      {/* Sub-abas por tipo de produto (escondidas no seletor de posicionamento) */}
+      {secaoDef?.tipos && !(secaoAtiva === 'posicionamento' && mostrarSeletor) && (
         <div className="card p-2 flex flex-wrap gap-1">
           {secaoDef.tipos.map((t) => {
             const ativa = tipoAtivoSecao === t.key;
@@ -401,8 +413,43 @@ export default function PassoAPassoView() {
         </div>
       )}
 
-      {/* SLIDE ATUAL */}
-      {total === 0 ? (
+      {/* SELETOR de tipo (aparece so em Posicionar antes de escolher) */}
+      {secaoAtiva === 'posicionamento' && mostrarSeletor && (() => {
+        const opcoes = [
+          { key: 'copo',     label: 'Copos / Garrafas', Icon: Coffee,  cor: 'bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200' },
+          { key: 'pulseira', label: 'Pulseira',         Icon: Watch,   cor: 'bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200' },
+          { key: 'caneta',   label: 'Caneta',           Icon: Pen,     cor: 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200' },
+          { key: 'outro',    label: 'Outro',            Icon: Package, cor: 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200' },
+        ];
+        return (
+          <div className="card p-6 sm:p-10">
+            <h2 className="text-xl sm:text-2xl font-bold text-slate-800 text-center mb-2">Qual o tipo de produto?</h2>
+            <p className="text-sm text-slate-500 text-center mb-6">Escolhe pra ver como posicionar corretamente na máquina</p>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              {opcoes.map((o) => {
+                const I = o.Icon;
+                return (
+                  <button
+                    key={o.key}
+                    onClick={() => {
+                      setTipoAtivo((prev) => ({ ...prev, posicionamento: o.key }));
+                      setIndexAtual(0);
+                      setMostrarSeletor(false);
+                    }}
+                    className={`p-6 sm:p-8 rounded-2xl border-2 transition-all flex flex-col items-center gap-3 ${o.cor}`}
+                  >
+                    <I size={56} strokeWidth={1.5} />
+                    <span className="text-base sm:text-lg font-semibold">{o.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* SLIDE ATUAL (nao aparece se estamos no seletor) */}
+      {!(secaoAtiva === 'posicionamento' && mostrarSeletor) && (total === 0 ? (
         <div className="card p-8 text-center">
           <p className="text-slate-400 text-sm mb-3">Nenhum passo cadastrado nesta seção{mostraCores ? ` para "${CORES_COPO.find(c => c.key === corAtiva)?.label}"` : ''}.</p>
           <button onClick={adicionarPasso} className="btn-primary text-sm">
@@ -416,8 +463,18 @@ export default function PassoAPassoView() {
           ) : (
           <div className="card p-5 sm:p-8 min-h-[400px] flex flex-col">
             <div className="flex items-center justify-between mb-4 gap-3">
-              <div className="text-xs font-semibold text-indigo-600 uppercase tracking-wide">
-                Passo {indexAtual + 1} de {total}
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="text-xs font-semibold text-indigo-600 uppercase tracking-wide">
+                  Passo {indexAtual + 1} de {total}
+                </div>
+                {secaoAtiva === 'posicionamento' && !mostrarSeletor && (
+                  <button
+                    onClick={() => { setMostrarSeletor(true); setIndexAtual(0); }}
+                    className="text-xs text-slate-500 hover:text-slate-800 underline"
+                  >
+                    ← trocar tipo de produto
+                  </button>
+                )}
               </div>
               <div className="flex gap-1">
                 {!modoEdicao && (
@@ -597,7 +654,7 @@ export default function PassoAPassoView() {
             </div>
           )}
         </>
-      )}
+      ))}
 
       {fotoAmpliada && (
         <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4" onClick={() => setFotoAmpliada(null)}>

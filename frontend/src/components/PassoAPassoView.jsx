@@ -218,7 +218,7 @@ function VideoPlayer({ item }) {
   return <VideoNativo url={url} filename={item.filename} />;
 }
 
-export default function PassoAPassoView() {
+export default function PassoAPassoView({ kiosque = false } = {}) {
   const toast = useToast();
   const [passos, setPassos] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -468,7 +468,7 @@ export default function PassoAPassoView() {
   if (loading) return <div className="text-slate-500 text-sm py-8 text-center">Carregando passo a passo…</div>;
 
   return (
-    <div className="space-y-4">
+    <div className={kiosque ? "h-full flex flex-col gap-2" : "space-y-4"}>
       {/* Navegação das seções */}
       <div className="card p-2 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-1">
         {SECOES.map((s) => {
@@ -491,7 +491,7 @@ export default function PassoAPassoView() {
 
       {/* Sub-abas por tipo de produto (escondidas no seletor de posicionamento) */}
       {secaoDef?.tipos && !(secaoAtiva === 'posicionamento' && mostrarSeletor) && (
-        <div className="card p-2 flex flex-wrap gap-1">
+        <div className={`card flex flex-wrap gap-1 flex-shrink-0 ${kiosque ? "p-1" : "p-2"}`}>
           {secaoDef.tipos.map((t) => {
             const ativa = tipoAtivoSecao === t.key;
             return (
@@ -511,7 +511,7 @@ export default function PassoAPassoView() {
 
       {/* Bolinhas de cor pra copo/caneta em Parâmetros */}
       {mostraCores && (
-        <div className="card p-3 flex flex-wrap items-center gap-3">
+        <div className={`card flex flex-wrap items-center gap-3 flex-shrink-0 ${kiosque ? "p-2" : "p-3"}`}>
           <span className="text-xs font-semibold uppercase text-slate-500 tracking-wide">
             {tipoAtivoSecao === 'copo' ? 'Cor do copo:' : 'Variante da caneta:'}
           </span>
@@ -589,7 +589,7 @@ export default function PassoAPassoView() {
           {!passoAtual ? (
             <div className="card p-8 text-center text-slate-400 text-sm">Carregando…</div>
           ) : (
-          <div className="card p-5 sm:p-8 min-h-[400px] flex flex-col">
+          <div className={`card flex flex-col ${kiosque ? "p-3 sm:p-4 flex-1 min-h-0" : "p-5 sm:p-8 min-h-[400px]"}`}>
             <div className="flex items-center justify-between mb-4 gap-3">
               <div className="flex items-center gap-2 flex-wrap">
                 <div className="text-xs font-semibold text-indigo-600 uppercase tracking-wide">

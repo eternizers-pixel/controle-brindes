@@ -13,6 +13,7 @@ import {
 import {
   getGravacaoPassos, criarGravacaoPasso, atualizarGravacaoPasso, deletarGravacaoPasso,
   uploadVideoGravacao, deletarVideoGravacao,
+  getIconesGravacao, salvarIconeGravacao,
 } from '../api/client';
 import { compressImageFile } from '../utils/imagem';
 import { useToast } from './Toast';
@@ -103,7 +104,7 @@ function TextoFormatado({ children, className }) {
 }
 
 // Card visual pra cada parametro (Hachura, Angulo, Velocidade, Potencia)
-function ParamCard({ label, value, color }) {
+function ParamCard({ label, value, color, icone, modoEdicao, onChange }) {
   const palette = {
     blue:    { bg: 'bg-blue-50',    border: 'border-blue-200',    label: 'text-blue-700',    value: 'text-blue-900' },
     purple:  { bg: 'bg-purple-50',  border: 'border-purple-200',  label: 'text-purple-700',  value: 'text-purple-900' },
@@ -111,8 +112,11 @@ function ParamCard({ label, value, color }) {
     amber:   { bg: 'bg-amber-50',   border: 'border-amber-200',   label: 'text-amber-700',   value: 'text-amber-900' },
   }[color] || { bg: 'bg-slate-50', border: 'border-slate-200', label: 'text-slate-600', value: 'text-slate-900' };
   return (
-    <div className={`${palette.bg} border-2 ${palette.border} rounded-xl p-3 sm:p-4 text-center`}>
-      <div className={`text-[10px] sm:text-xs font-bold uppercase tracking-wider ${palette.label} mb-1`}>{label}</div>
+    <div className={`${palette.bg} border-2 ${palette.border} rounded-xl p-3 sm:p-4 text-center flex flex-col items-center gap-1`}>
+      {icone && (
+        <img src={icone} alt="" className="h-10 object-contain max-w-full mb-0.5" />
+      )}
+      <div className={`text-[10px] sm:text-xs font-bold uppercase tracking-wider ${palette.label}`}>{label}</div>
       <div className={`text-2xl sm:text-3xl font-black ${palette.value} tabular-nums`}>{value || '—'}</div>
     </div>
   );
@@ -223,13 +227,17 @@ export default function PassoAPassoView() {
   const [uploadingVideo, setUploadingVideo] = useState(false);
   const [linkVideoInput, setLinkVideoInput] = useState('');
   const [fotoAmpliada, setFotoAmpliada] = useState(null);
-  const [mostrarSeletor, setMostrarSeletor] = useState(true); // Posicionamento: mostrar seletor de tipo primeiro
+  const [mostrarSeletor, setMostrarSeletor] = useState(true);
+  const [icones, setIcones] = useState({}); // { hachura: url, angulo: url, ... }
+  const [modalIcones, setModalIcones] = useState(false);
+  const [uploadingIcone, setUploadingIcone] = useState(null); // 'hachura' | etc quando esta subindo
 
   useEffect(() => {
     (async () => {
       try {
-        const data = await getGravacaoPassos();
+        const [data, iconesMap] = await Promise.all([getGravacaoPassos(), getIconesGravacao()]);
         setPassos(data);
+        setIcones(iconesMap || {});
       } catch (e) {
         toast.error('Erro ao carregar passos: ' + (e.message || e));
       } finally {
@@ -712,13 +720,48 @@ export default function PassoAPassoView() {
                       )}
                     </div>
                     {/* Grid visual de parametros de gravacao (quando o passo tem eles) */}
-                    {passoAtual.parametros && (
-                      <div className="grid grid-cols-2 gap-3 mb-2">
-                        <ParamCard label="HACHURA"    value={passoAtual.parametros.hachura}    color="blue"    />
-                        <ParamCard label="ÂNGULO"     value={passoAtual.parametros.angulo}     color="purple"  />
-                        <ParamCard label="VELOCIDADE" value={passoAtual.parametros.velocidade} color="emerald" />
-                        <ParamCard label="POTÊNCIA"   value={passoAtual.parametros.potencia}   color="amber"   />
-                      </div>
+                    {(passoAtual.parametros || modoEdicao) && (
+                      <>
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Configuração no EZCAD</div>
+                          <button onClick={() => setModalIcones(true)} className="text-xs text-slate-500 hover:text-indigo-600 flex items-center gap-1">
+                            <Settings size={12}/> Editar ícones
+                          </button>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3 mb-3">
+                          <ParamCard label="HACHURA" color="blue"
+                            icone={icones.hachura}
+                            modoEdicao={modoEdicao}
+                            value={modoEdicao ? (editData.parametros?.hachura || '') : passoAtual.parametros?.hachura}
+                            onChange={(v) => setEditData((d) => ({ ...d, parametros: { ...(d.parametros||{}), hachura: v } }))}
+                          />
+                          <ParamCard label="ÂNGULO" color="purple"
+                            icone={icones.angulo}
+                            modoEdicao={modoEdicao}
+                            value={modoEdicao ? (editData.parametros?.angulo || '') : passoAtual.parametros?.angulo}
+                            onChange={(v) => setEditData((d) => ({ ...d, parametros: { ...(d.parametros||{}), angulo: v } }))}
+                          />
+                          <ParamCard label="VELOCIDADE" color="emerald"
+                            icone={icones.velocidade}
+                            modoEdicao={modoEdicao}
+                            value={modoEdicao ? (editData.parametros?.velocidade || '') : passoAtual.parametros?.velocidade}
+                            onChange={(v) => setEditData((d) => ({ ...d, parametros: { ...(d.parametros||{}), velocidade: v } }))}
+                          />
+                          <ParamCard label="POTÊNCIA" color="amber"
+                            icone={icones.potencia}
+                            modoEdicao={modoEdicao}
+                            value={modoEdicao ? (editData.parametros?.potencia || '') : passoAtual.parametros?.potencia}
+                            onChange={(v) => setEditData((d) => ({ ...d, parametros: { ...(d.parametros||{}), potencia: v } }))}
+                          />
+                        </div>
+                        {/* Callout F2 pra gravar essa passagem */}
+                        <div className="mb-3 p-3 rounded-lg bg-rose-50 border border-rose-200 flex items-start gap-2">
+                          <Zap size={18} className="text-rose-500 flex-shrink-0 mt-0.5"/>
+                          <div className="text-sm text-rose-800">
+                            <strong>Aperta F2</strong> pra gravar esta passagem. Depois de terminar, configure a próxima passagem (Próximo →) e aperta F2 de novo.
+                          </div>
+                        </div>
+                      </>
                     )}
                     <div className="flex-1">
                       {modoEdicao ? (
@@ -816,6 +859,72 @@ export default function PassoAPassoView() {
           )}
         </>
       ))}
+
+      {/* Modal Editar Icones do EZCAD */}
+      {modalIcones && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => setModalIcones(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-slate-800">Ícones do EZCAD</h2>
+              <button onClick={() => setModalIcones(false)} className="p-1.5 rounded hover:bg-slate-100"><X size={18}/></button>
+            </div>
+            <p className="text-sm text-slate-500 mb-4">Suba um print/foto de onde clicar no EZCAD pra cada parâmetro. Aparecem em cima de cada card na apresentação.</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {[
+                { key: 'hachura',    label: 'Hachura',    color: 'blue'    },
+                { key: 'angulo',     label: 'Ângulo',     color: 'purple'  },
+                { key: 'velocidade', label: 'Velocidade', color: 'emerald' },
+                { key: 'potencia',   label: 'Potência',   color: 'amber'   },
+              ].map((m) => (
+                <div key={m.key} className="border-2 border-slate-200 rounded-xl p-3">
+                  <div className="text-sm font-semibold text-slate-700 mb-2">{m.label}</div>
+                  {icones[m.key] ? (
+                    <img src={icones[m.key]} alt="" className="w-full h-24 object-contain bg-slate-50 rounded mb-2"/>
+                  ) : (
+                    <div className="w-full h-24 bg-slate-50 rounded flex items-center justify-center text-slate-300 text-xs mb-2">Sem ícone</div>
+                  )}
+                  <label className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 cursor-pointer transition-colors w-full justify-center">
+                    <Camera size={12}/>
+                    {uploadingIcone === m.key ? 'Enviando…' : (icones[m.key] ? 'Trocar' : 'Fazer upload')}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      disabled={uploadingIcone === m.key}
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        setUploadingIcone(m.key);
+                        try {
+                          const dataUrl = await compressImageFile(file, { maxWidth: 800, maxHeight: 500 });
+                          await salvarIconeGravacao(m.key, dataUrl);
+                          setIcones((prev) => ({ ...prev, [m.key]: dataUrl }));
+                        } catch (err) {
+                          toast.error('Erro: ' + (err.message || err));
+                        } finally {
+                          setUploadingIcone(null);
+                        }
+                      }}
+                    />
+                  </label>
+                  {icones[m.key] && (
+                    <button
+                      onClick={async () => {
+                        if (!confirm('Remover ícone?')) return;
+                        try {
+                          await salvarIconeGravacao(m.key, null);
+                          setIcones((prev) => ({ ...prev, [m.key]: null }));
+                        } catch (err) { toast.error('Erro: ' + (err.message || err)); }
+                      }}
+                      className="mt-1 text-[11px] text-rose-600 hover:underline w-full text-center"
+                    >Remover</button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {fotoAmpliada && (
         <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4" onClick={() => setFotoAmpliada(null)}>

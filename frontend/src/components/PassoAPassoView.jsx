@@ -35,9 +35,9 @@ const SECOES = [
 
 // Cores para o seletor de copo em Parâmetros
 const CORES_COPO = [
-  { key: 'verde_vermelho', label: 'Verde ou Vermelho', bg: 'linear-gradient(90deg,#10b981 50%,#dc2626 50%)' },
   { key: 'preto',          label: 'Preto',             bg: '#111827' },
   { key: 'branco',         label: 'Branco',            bg: '#f8fafc', border: '#cbd5e1' },
+  { key: 'verde_vermelho', label: 'Verde ou Vermelho', bg: 'linear-gradient(90deg,#10b981 50%,#dc2626 50%)' },
   { key: 'outras',         label: 'Outras cores',      bg: 'linear-gradient(90deg,#a855f7,#f59e0b,#ec4899)' },
 ];
 
@@ -79,7 +79,7 @@ export default function PassoAPassoView() {
   const [loading, setLoading] = useState(true);
   const [secaoAtiva, setSecaoAtiva] = useState('setup');
   const [tipoAtivo, setTipoAtivo] = useState({});
-  const [corAtiva, setCorAtiva] = useState('verde_vermelho');
+  const [corAtiva, setCorAtiva] = useState('preto');
   const [indexAtual, setIndexAtual] = useState(0);
   const [modoEdicao, setModoEdicao] = useState(false);
   const [editData, setEditData] = useState({});

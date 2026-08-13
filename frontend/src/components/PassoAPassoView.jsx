@@ -87,6 +87,7 @@ export default function PassoAPassoView() {
   const [uploadingVideo, setUploadingVideo] = useState(false);
   const [linkVideoInput, setLinkVideoInput] = useState('');
   const [fotoAmpliada, setFotoAmpliada] = useState(null);
+  const [navHint, setNavHint] = useState(null); // 'first' | 'last' — usado ao trocar de secao pra saber onde parar
 
   useEffect(() => {
     (async () => {
@@ -119,8 +120,14 @@ export default function PassoAPassoView() {
   }, [passos, secaoAtiva, secaoDef, tipoAtivoSecao, mostraCores, corAtiva]);
 
   useEffect(() => {
-    setIndexAtual(0);
+    if (navHint === 'last' && passosDaSecao.length > 0) {
+      setIndexAtual(passosDaSecao.length - 1);
+    } else {
+      setIndexAtual(0);
+    }
+    setNavHint(null);
     setModoEdicao(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [secaoAtiva, tipoAtivoSecao, corAtiva]);
 
   const passoAtual = passosDaSecao[indexAtual];
@@ -156,8 +163,33 @@ export default function PassoAPassoView() {
     return () => window.removeEventListener('keydown', h);
   }, [fotoAmpliada]);
 
-  const anterior = () => setIndexAtual((i) => Math.max(0, i - 1));
-  const proximo  = () => setIndexAtual((i) => Math.min(total - 1, i + 1));
+  const anterior = () => {
+    if (indexAtual > 0) {
+      setIndexAtual((i) => i - 1);
+      return;
+    }
+    // Ja no primeiro passo: volta pra ultima secao anterior
+    const idx = SECOES.findIndex((s) => s.key === secaoAtiva);
+    if (idx > 0) {
+      const prev = SECOES[idx - 1];
+      setNavHint('last');
+      setSecaoAtiva(prev.key);
+      // tipo/cor voltam pros defaults (que sao os primeiros)
+    }
+  };
+  const proximo = () => {
+    if (indexAtual < total - 1) {
+      setIndexAtual((i) => i + 1);
+      return;
+    }
+    // Ja no ultimo passo: avanca pra proxima secao
+    const idx = SECOES.findIndex((s) => s.key === secaoAtiva);
+    if (idx < SECOES.length - 1) {
+      const next = SECOES[idx + 1];
+      setNavHint('first');
+      setSecaoAtiva(next.key);
+    }
+  };
 
   const salvarEdicao = async () => {
     const id = passoAtual.id;
@@ -481,9 +513,15 @@ export default function PassoAPassoView() {
           {/* Navegação */}
           {!modoEdicao && (
             <div className="flex items-center justify-between gap-3">
-              <button onClick={anterior} disabled={indexAtual === 0} className="btn-outline flex-1 sm:flex-none disabled:opacity-40 disabled:cursor-not-allowed">
-                <ArrowLeft size={16}/> Anterior
-              </button>
+              {(() => {
+                const idxSecao = SECOES.findIndex((s) => s.key === secaoAtiva);
+                const desabilitado = indexAtual === 0 && idxSecao === 0;
+                return (
+                  <button onClick={anterior} disabled={desabilitado} className="btn-outline flex-1 sm:flex-none disabled:opacity-40 disabled:cursor-not-allowed">
+                    <ArrowLeft size={16}/> Anterior
+                  </button>
+                );
+              })()}
               <div className="flex gap-1.5 items-center">
                 {passosDaSecao.map((_, i) => (
                   <button
@@ -495,9 +533,15 @@ export default function PassoAPassoView() {
                   />
                 ))}
               </div>
-              <button onClick={proximo} disabled={indexAtual === total - 1} className="btn-primary flex-1 sm:flex-none disabled:opacity-40 disabled:cursor-not-allowed">
-                Próximo <ArrowRight size={16}/>
-              </button>
+              {(() => {
+                const idxSecao = SECOES.findIndex((s) => s.key === secaoAtiva);
+                const desabilitado = indexAtual === total - 1 && idxSecao === SECOES.length - 1;
+                return (
+                  <button onClick={proximo} disabled={desabilitado} className="btn-primary flex-1 sm:flex-none disabled:opacity-40 disabled:cursor-not-allowed">
+                    Próximo <ArrowRight size={16}/>
+                  </button>
+                );
+              })()}
             </div>
           )}
 

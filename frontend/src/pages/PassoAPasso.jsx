@@ -18,7 +18,7 @@ export default function PassoAPasso() {
       </header>
 
       {/* Conteúdo — cresce pra ocupar o resto da tela */}
-      <div className="flex-1 min-h-0 overflow-auto p-2 sm:p-3">
+      <div className="flex-1 min-h-0 overflow-hidden p-2 sm:p-3">
         <PassoAPassoView kiosque />
       </div>
     </div>

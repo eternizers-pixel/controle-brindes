@@ -342,14 +342,12 @@ export default function Parametros() {
             <p className="text-slate-500 text-sm">Brindes, produtos externos e passo a passo do processo</p>
           </div>
         </div>
-        {view === 'produtos' && (
-          <button
-            className="btn-primary text-sm flex-shrink-0"
-            onClick={() => setModalProduto('novo')}
-          >
-            <Plus size={14}/> Novo produto de gravação
-          </button>
-        )}
+        <button
+          className="btn-primary text-sm flex-shrink-0"
+          onClick={() => setModalProduto('novo')}
+        >
+          <Plus size={14}/> Novo produto de gravação
+        </button>
       </header>
 
       {/* Toggle Produtos | Passo a Passo (Passo a Passo navega pra rota propria) */}
@@ -364,8 +362,6 @@ export default function Parametros() {
           Passo a Passo
         </Link>
       </div>
-
-      {(
 
       <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
         {/* Lista (esquerda) */}
@@ -580,7 +576,6 @@ export default function Parametros() {
           )}
         </div>
       </div>
-      )}
 
       <ProdutoGravacaoModal
         open={!!modalProduto}

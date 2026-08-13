@@ -15,6 +15,7 @@ import {
   Search, Package2, Settings2, Plus, X, ArrowLeft, Check, Wrench, Edit2,
   Camera, Copy, Loader2, CloudOff,
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import Modal from '../components/Modal';
 import PassoAPassoView from '../components/PassoAPassoView';
 import {
@@ -83,7 +84,7 @@ function normalizarLista(lista) {
 }
 
 export default function Parametros() {
-  const [view, setView] = useState('produtos'); // 'produtos' | 'passos'
+
 
   const toast = useToast();
   const [itens, setItens] = useState([]);
@@ -351,25 +352,20 @@ export default function Parametros() {
         )}
       </header>
 
-      {/* Toggle Produtos | Passo a Passo */}
+      {/* Toggle Produtos | Passo a Passo (Passo a Passo navega pra rota propria) */}
       <div className="mb-4 inline-flex rounded-lg bg-slate-100 p-1">
-        <button
-          onClick={() => setView('produtos')}
-          className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${view === 'produtos' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-600 hover:text-slate-800'}`}
-        >
+        <button className="px-4 py-1.5 rounded-md text-sm font-medium bg-white shadow-sm text-slate-800">
           Produtos
         </button>
-        <button
-          onClick={() => setView('passos')}
-          className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${view === 'passos' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-600 hover:text-slate-800'}`}
+        <Link
+          to="/passo-a-passo"
+          className="px-4 py-1.5 rounded-md text-sm font-medium text-slate-600 hover:text-slate-800 transition-all"
         >
           Passo a Passo
-        </button>
+        </Link>
       </div>
 
-      {view === 'passos' ? (
-        <PassoAPassoView />
-      ) : (
+      {(
 
       <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
         {/* Lista (esquerda) */}

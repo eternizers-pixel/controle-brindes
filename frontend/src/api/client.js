@@ -700,6 +700,7 @@ export async function atualizarGravacaoPasso(id, payload) {
   if (payload.videos !== undefined)       patch.videos       = Array.isArray(payload.videos) ? payload.videos : [];
   if (payload.cor !== undefined)          patch.cor          = payload.cor;
   if (payload.parametros !== undefined)   patch.parametros   = payload.parametros;
+  if (payload.parametros !== undefined)   patch.parametros   = payload.parametros;
   const row = await handle(
     supabase.from('gravacao_passos').update(patch).eq('id', id).select().single()
   );

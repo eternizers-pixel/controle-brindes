@@ -419,93 +419,104 @@ export default function PassoAPassoView() {
             </div>
 
             {/* Conteúdo */}
-            <div className="flex-1 flex flex-col lg:flex-row gap-6">
-              {/* Coluna esquerda: fotos + videos */}
-              {(modoEdicao || (passoAtual.fotos?.length > 0) || (passoAtual.videos?.length > 0)) && (
-                <div className="lg:w-1/2 flex flex-col gap-3">
-                  {/* Fotos */}
-                  {(modoEdicao ? editData.fotos : passoAtual.fotos)?.map((foto, idx) => (
-                    <div key={'f'+idx} className="relative group">
-                      <img
-                        src={foto.data}
-                        alt={foto.alt || ''}
-                        className="w-full max-h-[350px] object-contain bg-slate-50 rounded-lg border border-slate-200 cursor-zoom-in"
-                        onClick={() => !modoEdicao && setFotoAmpliada(foto.data)}
-                      />
-                      {modoEdicao && (
-                        <button
-                          onClick={() => removerFoto(idx)}
-                          className="absolute top-2 right-2 bg-rose-500 hover:bg-rose-600 text-white rounded-full w-7 h-7 grid place-items-center text-sm"
-                        >×</button>
-                      )}
-                    </div>
-                  ))}
+            {(() => {
+              const fotos  = modoEdicao ? editData.fotos  : passoAtual.fotos;
+              const videos = modoEdicao ? editData.videos : passoAtual.videos;
+              const temVideos = (videos?.length > 0) || modoEdicao;
+              const temFotos  = (fotos?.length  > 0) || modoEdicao;
 
-                  {/* Videos */}
-                  {(modoEdicao ? editData.videos : passoAtual.videos)?.map((v, idx) => (
-                    <div key={'v'+idx} className="relative group">
-                      <VideoPlayer item={v} />
+              return (
+                <div className="flex-1 flex flex-col lg:flex-row gap-6">
+                  {/* Coluna esquerda: VIDEOS (+ upload de video em edicao) */}
+                  {temVideos && (
+                    <div className="lg:w-1/2 flex flex-col gap-3">
+                      {videos?.map((v, idx) => (
+                        <div key={'v'+idx} className="relative group">
+                          <VideoPlayer item={v} />
+                          {modoEdicao && (
+                            <button
+                              onClick={() => removerVideo(idx)}
+                              className="absolute top-2 right-2 bg-rose-500 hover:bg-rose-600 text-white rounded-full w-7 h-7 grid place-items-center text-sm z-10"
+                            >×</button>
+                          )}
+                        </div>
+                      ))}
                       {modoEdicao && (
-                        <button
-                          onClick={() => removerVideo(idx)}
-                          className="absolute top-2 right-2 bg-rose-500 hover:bg-rose-600 text-white rounded-full w-7 h-7 grid place-items-center text-sm z-10"
-                        >×</button>
+                        <div className="space-y-2">
+                          <label className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 cursor-pointer transition-colors">
+                            <Video size={14}/>
+                            {uploadingVideo ? 'Enviando…' : 'Vídeo (upload)'}
+                            <input type="file" accept="video/*" className="hidden"
+                              onChange={(e) => uploadVideo(e.target.files?.[0])}
+                              disabled={uploadingVideo}
+                            />
+                          </label>
+                          <div className="flex gap-2">
+                            <input
+                              type="url"
+                              className="input flex-1 text-sm"
+                              placeholder="Cola link YouTube/Drive/Vimeo aqui"
+                              value={linkVideoInput}
+                              onChange={(e) => setLinkVideoInput(e.target.value)}
+                            />
+                            <button onClick={adicionarLinkVideo} disabled={!linkVideoInput.trim()} className="btn-outline text-sm disabled:opacity-50">
+                              <Link2 size={14}/> Adicionar link
+                            </button>
+                          </div>
+                        </div>
                       )}
-                    </div>
-                  ))}
-
-                  {/* Upload/Link em modo edição */}
-                  {modoEdicao && (
-                    <div className="space-y-2">
-                      <div className="flex gap-2 flex-wrap">
-                        <label className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 cursor-pointer transition-colors">
-                          <Camera size={14}/>
-                          {uploadingFoto ? 'Processando…' : 'Foto'}
-                          <input type="file" accept="image/*" className="hidden"
-                            onChange={(e) => uploadFoto(e.target.files?.[0])}
-                            disabled={uploadingFoto}
-                          />
-                        </label>
-                        <label className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 cursor-pointer transition-colors">
-                          <Video size={14}/>
-                          {uploadingVideo ? 'Enviando…' : 'Vídeo (upload)'}
-                          <input type="file" accept="video/*" className="hidden"
-                            onChange={(e) => uploadVideo(e.target.files?.[0])}
-                            disabled={uploadingVideo}
-                          />
-                        </label>
-                      </div>
-                      <div className="flex gap-2">
-                        <input
-                          type="url"
-                          className="input flex-1 text-sm"
-                          placeholder="Cola link YouTube/Drive/Vimeo aqui"
-                          value={linkVideoInput}
-                          onChange={(e) => setLinkVideoInput(e.target.value)}
-                        />
-                        <button onClick={adicionarLinkVideo} disabled={!linkVideoInput.trim()} className="btn-outline text-sm disabled:opacity-50">
-                          <Link2 size={14}/> Adicionar link
-                        </button>
-                      </div>
                     </div>
                   )}
-                </div>
-              )}
 
-              {/* Coluna direita: descrição */}
-              <div className={(modoEdicao || (passoAtual.fotos?.length > 0) || (passoAtual.videos?.length > 0)) ? 'lg:w-1/2 flex' : 'w-full flex'}>
-                {modoEdicao ? (
-                  <textarea
-                    className="input w-full min-h-[300px] text-base leading-relaxed"
-                    value={editData.descricao}
-                    onChange={(e) => setEditData((d) => ({ ...d, descricao: e.target.value }))}
-                    placeholder="Descrição detalhada (aceita quebras de linha e emojis ⚠️✅❌)"
-                  />
-                ) : (
-                  <p className="text-base sm:text-lg text-slate-700 whitespace-pre-wrap leading-relaxed">{passoAtual.descricao}</p>
-                )}
-              </div>
-            </div>
+                  {/* Coluna direita: DESCRIÇÃO + FOTOS abaixo (+ upload de foto em edicao) */}
+                  <div className={temVideos ? 'lg:w-1/2 flex flex-col gap-4' : 'w-full flex flex-col gap-4'}>
+                    <div className="flex-1">
+                      {modoEdicao ? (
+                        <textarea
+                          className="input w-full min-h-[240px] text-base leading-relaxed"
+                          value={editData.descricao}
+                          onChange={(e) => setEditData((d) => ({ ...d, descricao: e.target.value }))}
+                          placeholder="Descrição detalhada (aceita quebras de linha e emojis ⚠️✅❌)"
+                        />
+                      ) : (
+                        <p className="text-base sm:text-lg text-slate-700 whitespace-pre-wrap leading-relaxed">{passoAtual.descricao}</p>
+                      )}
+                    </div>
+
+                    {temFotos && (
+                      <div className="flex flex-col gap-2">
+                        {fotos?.map((foto, idx) => (
+                          <div key={'f'+idx} className="relative group">
+                            <img
+                              src={foto.data}
+                              alt={foto.alt || ''}
+                              className="w-full max-h-[280px] object-contain bg-slate-50 rounded-lg border border-slate-200 cursor-zoom-in"
+                              onClick={() => !modoEdicao && setFotoAmpliada(foto.data)}
+                            />
+                            {modoEdicao && (
+                              <button
+                                onClick={() => removerFoto(idx)}
+                                className="absolute top-2 right-2 bg-rose-500 hover:bg-rose-600 text-white rounded-full w-7 h-7 grid place-items-center text-sm"
+                              >×</button>
+                            )}
+                          </div>
+                        ))}
+                        {modoEdicao && (
+                          <label className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 cursor-pointer transition-colors self-start">
+                            <Camera size={14}/>
+                            {uploadingFoto ? 'Processando…' : 'Adicionar foto'}
+                            <input type="file" accept="image/*" className="hidden"
+                              onChange={(e) => uploadFoto(e.target.files?.[0])}
+                              disabled={uploadingFoto}
+                            />
+                          </label>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
           )}
 

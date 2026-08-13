@@ -708,7 +708,7 @@ export default function PassoAPassoView({ kiosque = false } = {}) {
                           <img
                             src={foto.data}
                             alt={foto.alt || ''}
-                            className="w-full max-h-[600px] object-contain bg-slate-50 rounded-lg border border-slate-200 cursor-zoom-in"
+                            className={`object-contain bg-slate-50 rounded-lg border border-slate-200 cursor-zoom-in ${kiosque ? 'max-h-[35vh] w-auto max-w-full mx-auto' : 'w-full max-h-[600px]'}`}
                             onClick={() => !modoEdicao && setFotoAmpliada(foto.data)}
                           />
                           {modoEdicao && (

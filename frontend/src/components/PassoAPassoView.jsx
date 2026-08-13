@@ -146,7 +146,8 @@ function VideoNativo({ url, filename }) {
       className="w-full rounded"
       style={{
         aspectRatio: aspectRatio || undefined,
-        maxHeight: '500px',
+        maxHeight: '55vh',
+        maxWidth: '100%',
         objectFit: 'contain',
         background: 'transparent',
       }}
@@ -589,8 +590,8 @@ export default function PassoAPassoView({ kiosque = false } = {}) {
           {!passoAtual ? (
             <div className="card p-8 text-center text-slate-400 text-sm">Carregando…</div>
           ) : (
-          <div className={`card flex flex-col ${kiosque ? "p-3 sm:p-4 flex-1 min-h-0" : "p-5 sm:p-8 min-h-[400px]"}`}>
-            <div className="flex items-center justify-between mb-4 gap-3">
+          <div className={`card flex flex-col overflow-hidden ${kiosque ? "p-2 sm:p-3 flex-1 min-h-0" : "p-5 sm:p-8 min-h-[400px]"}`}>
+            <div className={`flex items-center justify-between gap-3 ${kiosque ? 'mb-2' : 'mb-4'}`}>
               <div className="flex items-center gap-2 flex-wrap">
                 <div className="text-xs font-semibold text-indigo-600 uppercase tracking-wide">
                   Passo {indexAtual + 1} de {total}
@@ -637,10 +638,10 @@ export default function PassoAPassoView({ kiosque = false } = {}) {
               // Layout: video sempre na esquerda. Se nao ha video mas tem foto, foto vai pra esquerda (bem grande).
               const fotoNaEsquerda = !temVideos && (fotos?.length > 0);
               return (
-                <div className="flex-1 flex flex-col lg:flex-row gap-6">
+                <div className={`flex-1 min-h-0 flex flex-col lg:flex-row ${kiosque ? "gap-2 overflow-hidden" : "gap-6"}`}>
                   {/* COLUNA ESQUERDA: video, OU foto grande se nao ha video */}
                   {temVideos && (
-                    <div className="lg:w-1/2 flex flex-col gap-3">
+                    <div className={`lg:w-1/2 flex flex-col gap-3 ${kiosque ? "min-h-0 overflow-hidden" : ""}`}>
                       {videos?.map((v, idx) => (
                         <div key={'v'+idx} className="relative group">
                           <VideoPlayer item={v} />
@@ -721,7 +722,7 @@ export default function PassoAPassoView({ kiosque = false } = {}) {
                           placeholder="Título do passo"
                         />
                       ) : (
-                        <h2 className="text-2xl sm:text-3xl font-bold text-slate-800 leading-tight mb-3">{passoAtual.titulo}</h2>
+                        <h2 className={`font-bold text-slate-800 leading-tight mb-2 ${kiosque ? 'text-xl sm:text-2xl' : 'text-2xl sm:text-3xl mb-3'}`}>{passoAtual.titulo}</h2>
                       )}
                     </div>
                     {/* Grid visual de parametros de gravacao (quando o passo tem eles) */}
@@ -783,7 +784,7 @@ export default function PassoAPassoView({ kiosque = false } = {}) {
                             <img
                               src={foto.data}
                               alt={foto.alt || ''}
-                              className="w-full max-h-[280px] object-contain bg-slate-50 rounded-lg border border-slate-200 cursor-zoom-in"
+                              className={`w-full object-contain bg-slate-50 rounded-lg border border-slate-200 cursor-zoom-in ${kiosque ? 'max-h-[35vh]' : 'max-h-[280px]'}`}
                               onClick={() => !modoEdicao && setFotoAmpliada(foto.data)}
                             />
                             {modoEdicao && (
@@ -815,7 +816,7 @@ export default function PassoAPassoView({ kiosque = false } = {}) {
 
           {/* Navegação */}
           {!modoEdicao && (
-            <div className="flex items-center justify-between gap-3">
+            <div className={`flex items-center justify-between gap-3 ${kiosque ? 'flex-shrink-0' : ''}`}>
               {(() => {
                 const idxSecao = SECOES.findIndex((s) => s.key === secaoAtiva);
                 const desabilitado = indexAtual === 0 && idxSecao === 0;

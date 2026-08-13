@@ -8,7 +8,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   Power, MoveHorizontal, Ruler, Sliders, HelpCircle, Play, Palette,
   Plus, Trash2, Edit2, Check, X, Camera, ArrowLeft, ArrowRight, Video, Link2,
-  Beer, Coffee, Watch, Pen, Package,
+  Beer, Coffee, Watch, Pen, Package, Settings, Zap,
 } from 'lucide-react';
 import {
   getGravacaoPassos, criarGravacaoPasso, atualizarGravacaoPasso, deletarGravacaoPasso,

@@ -53,12 +53,26 @@ const SECOES = [
   { key: 'duvidas',        titulo: 'Dúvidas Gerais',          icone: HelpCircle,     tipos: null },
 ];
 
-// Cores para o seletor de copo em Parâmetros
-const CORES_COPO = [
-  { key: 'preto',          label: 'Preto',             bg: '#111827' },
-  { key: 'branco',         label: 'Branco',            bg: '#f8fafc', border: '#cbd5e1' },
-  { key: 'verde_vermelho', label: 'Verde ou Vermelho', bg: 'linear-gradient(90deg,#10b981 50%,#dc2626 50%)' },
-  { key: 'outras',         label: 'Outras cores',      bg: 'linear-gradient(90deg,#a855f7,#f59e0b,#ec4899)' },
+// Cores/variantes para o seletor de tipo em Parâmetros (aplica pra copo e caneta)
+const CORES_POR_TIPO = {
+  copo: [
+    { key: 'preto',          label: 'Preto',             bg: '#111827' },
+    { key: 'branco',         label: 'Branco',            bg: '#f8fafc', border: '#cbd5e1' },
+    { key: 'verde_vermelho', label: 'Verde ou Vermelho', bg: 'linear-gradient(90deg,#10b981 50%,#dc2626 50%)' },
+    { key: 'outras',         label: 'Outras cores',      bg: 'linear-gradient(90deg,#a855f7,#f59e0b,#ec4899)' },
+  ],
+  caneta: [
+    { key: 'escura', label: 'Cor escura', bg: '#111827' },
+    { key: 'branca', label: 'Branca',     bg: '#f8fafc', border: '#cbd5e1' },
+  ],
+};
+
+// Configuração visual das 4 métricas de parâmetros
+const METRICAS_PARAM = [
+  { key: 'hachura',    label: 'HACHURA',    cor: 'indigo',  bg: 'bg-indigo-50',  border: 'border-indigo-200',  text: 'text-indigo-700'  },
+  { key: 'angulo',     label: 'ÂNGULO',     cor: 'amber',   bg: 'bg-amber-50',   border: 'border-amber-200',   text: 'text-amber-700',   sufixo: '°' },
+  { key: 'velocidade', label: 'VELOCIDADE', cor: 'emerald', bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700' },
+  { key: 'potencia',   label: 'POTÊNCIA',   cor: 'rose',    bg: 'bg-rose-50',    border: 'border-rose-200',    text: 'text-rose-700'    },
 ];
 
 // Detecta se é URL do YouTube, Vimeo, Google Drive ou vídeo direto
@@ -132,6 +146,41 @@ function VideoNativo({ url, filename }) {
   );
 }
 
+// Cards visuais das 4 metricas de parametros
+function ParametrosCards({ parametros, modoEdicao, onChange }) {
+  // Se nao esta editando e nao tem parametros, nao renderiza nada
+  if (!modoEdicao && !parametros) return null;
+  const p = parametros || {};
+  const setValor = (k, v) => onChange({ ...p, [k]: v });
+
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-1">
+      {METRICAS_PARAM.map((m) => {
+        const valor = p[m.key];
+        const mostrar = valor && String(valor).trim() && valor !== '—';
+        return (
+          <div key={m.key} className={`${m.bg} ${m.border} border-2 rounded-xl p-3 flex flex-col items-center text-center`}>
+            <div className={`text-[10px] sm:text-xs font-bold tracking-wider ${m.text}`}>{m.label}</div>
+            {modoEdicao ? (
+              <input
+                type="text"
+                value={p[m.key] || ''}
+                onChange={(e) => setValor(m.key, e.target.value)}
+                className={`w-full mt-1 text-2xl sm:text-3xl font-bold text-center bg-white/60 rounded border border-slate-200 ${m.text}`}
+                placeholder="—"
+              />
+            ) : (
+              <div className={`text-3xl sm:text-4xl font-black mt-1 ${mostrar ? m.text : 'text-slate-400'}`}>
+                {mostrar ? `${valor}${m.sufixo || ''}` : '—'}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function VideoPlayer({ item }) {
   const url = item.url;
   const type = detectVideoType(url);
@@ -192,8 +241,16 @@ export default function PassoAPassoView() {
   const secaoDef = useMemo(() => SECOES.find((s) => s.key === secaoAtiva), [secaoAtiva]);
   const tipoAtivoSecao = tipoAtivo[secaoAtiva] || (secaoDef?.tipos?.[0]?.key ?? null);
 
-  // Mostra bolinhas de cor apenas em parametros/copo
-  const mostraCores = secaoAtiva === 'parametros' && tipoAtivoSecao === 'copo';
+  // Mostra bolinhas de cor em parametros/copo e parametros/caneta
+  const coresDoTipo = (secaoAtiva === 'parametros' && CORES_POR_TIPO[tipoAtivoSecao]) || null;
+  const mostraCores = !!coresDoTipo;
+
+  // Ajusta corAtiva se ela nao existir pra esse tipo
+  useEffect(() => {
+    if (mostraCores && !coresDoTipo.find((c) => c.key === corAtiva)) {
+      setCorAtiva(coresDoTipo[0].key);
+    }
+  }, [mostraCores, tipoAtivoSecao]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const passosDaSecao = useMemo(() => {
     let filtrados = passos.filter((p) => p.secao === secaoAtiva);
@@ -223,6 +280,7 @@ export default function PassoAPassoView() {
         descricao: passoAtual.descricao || '',
         fotos: passoAtual.fotos || [],
         videos: passoAtual.videos || [],
+        parametros: passoAtual.parametros || null,
       });
       setLinkVideoInput('');
     }
@@ -438,11 +496,13 @@ export default function PassoAPassoView() {
         </div>
       )}
 
-      {/* Bolinhas de cor pra copo em Parâmetros */}
+      {/* Bolinhas de cor pra copo/caneta em Parâmetros */}
       {mostraCores && (
         <div className="card p-3 flex flex-wrap items-center gap-3">
-          <span className="text-xs font-semibold uppercase text-slate-500 tracking-wide">Cor do copo:</span>
-          {CORES_COPO.map((c) => {
+          <span className="text-xs font-semibold uppercase text-slate-500 tracking-wide">
+            {tipoAtivoSecao === 'copo' ? 'Cor do copo:' : 'Variante da caneta:'}
+          </span>
+          {coresDoTipo.map((c) => {
             const ativa = corAtiva === c.key;
             return (
               <button
@@ -506,7 +566,7 @@ export default function PassoAPassoView() {
       {/* SLIDE ATUAL (nao aparece se estamos no seletor) */}
       {!(secaoAtiva === 'posicionamento' && mostrarSeletor) && (total === 0 ? (
         <div className="card p-8 text-center">
-          <p className="text-slate-400 text-sm mb-3">Nenhum passo cadastrado nesta seção{mostraCores ? ` para "${CORES_COPO.find(c => c.key === corAtiva)?.label}"` : ''}.</p>
+          <p className="text-slate-400 text-sm mb-3">Nenhum passo cadastrado nesta seção{mostraCores ? ` para "${coresDoTipo.find(c => c.key === corAtiva)?.label}"` : ''}.</p>
           <button onClick={adicionarPasso} className="btn-primary text-sm">
             <Plus size={14}/> Criar primeiro passo
           </button>

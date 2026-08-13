@@ -652,3 +652,56 @@ export async function relTopBrindes(params = {}) {
   });
   return Object.values(agrup).sort((a, b) => b.unidades - a.unidades);
 }
+
+
+/* ============================================================================
+ * PASSO A PASSO DE GRAVAÇÃO (aba Parâmetros)
+ * ========================================================================= */
+
+// Lista todos os passos, ordenados por secao e ordem
+export async function getGravacaoPassos() {
+  const rows = await handle(
+    supabase.from('gravacao_passos')
+      .select('*')
+      .order('secao')
+      .order('tipo_produto', { nullsFirst: true })
+      .order('ordem')
+  );
+  return rows || [];
+}
+
+// Cria um novo passo
+export async function criarGravacaoPasso(payload) {
+  const row = await handle(
+    supabase.from('gravacao_passos').insert({
+      secao:        payload.secao || 'setup',
+      tipo_produto: payload.tipo_produto || null,
+      ordem:        Number(payload.ordem || 0),
+      titulo:       payload.titulo || 'Novo passo',
+      descricao:    payload.descricao || '',
+      fotos:        Array.isArray(payload.fotos) ? payload.fotos : [],
+    }).select().single()
+  );
+  return row;
+}
+
+// Atualiza um passo existente
+export async function atualizarGravacaoPasso(id, payload) {
+  const patch = { updated_at: new Date().toISOString() };
+  if (payload.secao !== undefined)        patch.secao        = payload.secao;
+  if (payload.tipo_produto !== undefined) patch.tipo_produto = payload.tipo_produto;
+  if (payload.ordem !== undefined)        patch.ordem        = Number(payload.ordem);
+  if (payload.titulo !== undefined)       patch.titulo       = payload.titulo;
+  if (payload.descricao !== undefined)    patch.descricao    = payload.descricao;
+  if (payload.fotos !== undefined)        patch.fotos        = Array.isArray(payload.fotos) ? payload.fotos : [];
+  const row = await handle(
+    supabase.from('gravacao_passos').update(patch).eq('id', id).select().single()
+  );
+  return row;
+}
+
+// Deleta um passo
+export async function deletarGravacaoPasso(id) {
+  await handle(supabase.from('gravacao_passos').delete().eq('id', id));
+  return true;
+}

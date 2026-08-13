@@ -117,7 +117,17 @@ function ParamCard({ label, value, color, icone, modoEdicao, onChange }) {
         <img src={icone} alt="" className="h-10 object-contain max-w-full mb-0.5" />
       )}
       <div className={`text-[10px] sm:text-xs font-bold uppercase tracking-wider ${palette.label}`}>{label}</div>
-      <div className={`text-2xl sm:text-3xl font-black ${palette.value} tabular-nums`}>{value || '—'}</div>
+      {modoEdicao ? (
+        <input
+          type="text"
+          value={value || ''}
+          onChange={(e) => onChange && onChange(e.target.value)}
+          placeholder="—"
+          className={`w-full mt-0.5 text-2xl sm:text-3xl font-black text-center bg-white/70 rounded border border-slate-200 tabular-nums ${palette.value}`}
+        />
+      ) : (
+        <div className={`text-2xl sm:text-3xl font-black ${palette.value} tabular-nums`}>{value || '—'}</div>
+      )}
     </div>
   );
 }

@@ -676,10 +676,12 @@ export async function criarGravacaoPasso(payload) {
     supabase.from('gravacao_passos').insert({
       secao:        payload.secao || 'setup',
       tipo_produto: payload.tipo_produto || null,
+      cor:          payload.cor || null,
       ordem:        Number(payload.ordem || 0),
       titulo:       payload.titulo || 'Novo passo',
       descricao:    payload.descricao || '',
-      fotos:        Array.isArray(payload.fotos) ? payload.fotos : [],
+      fotos:        Array.isArray(payload.fotos)  ? payload.fotos  : [],
+      videos:       Array.isArray(payload.videos) ? payload.videos : [],
     }).select().single()
   );
   return row;
@@ -694,6 +696,8 @@ export async function atualizarGravacaoPasso(id, payload) {
   if (payload.titulo !== undefined)       patch.titulo       = payload.titulo;
   if (payload.descricao !== undefined)    patch.descricao    = payload.descricao;
   if (payload.fotos !== undefined)        patch.fotos        = Array.isArray(payload.fotos) ? payload.fotos : [];
+  if (payload.videos !== undefined)       patch.videos       = Array.isArray(payload.videos) ? payload.videos : [];
+  if (payload.cor !== undefined)          patch.cor          = payload.cor;
   const row = await handle(
     supabase.from('gravacao_passos').update(patch).eq('id', id).select().single()
   );
@@ -704,4 +708,26 @@ export async function atualizarGravacaoPasso(id, payload) {
 export async function deletarGravacaoPasso(id) {
   await handle(supabase.from('gravacao_passos').delete().eq('id', id));
   return true;
+}
+
+
+// Sobe um video pro Storage bucket 'gravacao' e retorna a URL publica.
+export async function uploadVideoGravacao(file, prefixo = 'passos') {
+  const ext = file.name.split('.').pop() || 'mp4';
+  const safeName = String(file.name || 'video').replace(/[^\w.-]+/g, '_').slice(0, 60);
+  const path = `${prefixo}/${Date.now()}_${safeName}`;
+  const { error: upErr } = await supabase.storage.from('gravacao').upload(path, file, {
+    contentType: file.type || 'video/mp4',
+    upsert: false,
+  });
+  if (upErr) throw upErr;
+  const { data } = supabase.storage.from('gravacao').getPublicUrl(path);
+  return { url: data.publicUrl, path, filename: file.name };
+}
+
+// Deleta um video do Storage bucket 'gravacao' pelo path armazenado
+export async function deletarVideoGravacao(path) {
+  if (!path) return;
+  const { error } = await supabase.storage.from('gravacao').remove([path]);
+  if (error) throw error;
 }

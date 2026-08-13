@@ -128,8 +128,24 @@ function ParamCard({ label, value, color, icone, modoEdicao, onChange }) {
 }
 
 // Video native com aspect-ratio dinamico (sem bordas pretas)
-function VideoNativo({ url, filename }) {
+function VideoNativo({ url, filename, kiosque = false }) {
   const [aspectRatio, setAspectRatio] = useState(null);
+  if (kiosque) {
+    return (
+      <div className="w-full max-w-[280px] aspect-square mx-auto rounded overflow-hidden bg-black">
+        <video
+          src={url}
+          controls
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="w-full h-full object-cover"
+          title={filename || 'video'}
+        />
+      </div>
+    );
+  }
   return (
     <video
       src={url}
@@ -191,7 +207,7 @@ function ParametrosCards({ parametros, modoEdicao, onChange }) {
   );
 }
 
-function VideoPlayer({ item }) {
+function VideoPlayer({ item, kiosque = false }) {
   const url = item.url;
   const type = detectVideoType(url);
   // Autoplay + loop + muted (necessario pro autoplay funcionar nos browsers)
@@ -200,23 +216,29 @@ function VideoPlayer({ item }) {
     const id = m ? m[1] : '';
     // loop no YouTube exige playlist com o proprio id
     const src = `https://www.youtube.com/embed/${id}?autoplay=1&mute=1&loop=1&playlist=${id}&controls=1&modestbranding=1`;
-    return <iframe src={src} className="w-full aspect-video rounded" allow="autoplay; encrypted-media" allowFullScreen title={item.filename||'video'} />;
+    return kiosque
+      ? <div className="w-full max-w-[280px] aspect-square mx-auto rounded overflow-hidden bg-black"><iframe src={src} className="w-full h-full" allow="autoplay; encrypted-media" allowFullScreen title={item.filename||'video'} /></div>
+      : <iframe src={src} className="w-full aspect-video rounded" allow="autoplay; encrypted-media" allowFullScreen title={item.filename||'video'} />;
   }
   if (type === 'drive') {
     const m = url.match(/\/d\/([\w-]+)/);
     const id = m ? m[1] : '';
     const embedUrl = id ? `https://drive.google.com/file/d/${id}/preview` : url;
-    return <iframe src={embedUrl} className="w-full aspect-video rounded" allow="autoplay" allowFullScreen title={item.filename||'video'} />;
+    return kiosque
+      ? <div className="w-full max-w-[280px] aspect-square mx-auto rounded overflow-hidden bg-black"><iframe src={embedUrl} className="w-full h-full" allow="autoplay" allowFullScreen title={item.filename||'video'} /></div>
+      : <iframe src={embedUrl} className="w-full aspect-video rounded" allow="autoplay" allowFullScreen title={item.filename||'video'} />;
   }
   if (type === 'vimeo') {
     const m = url.match(/vimeo\.com\/(\d+)/);
     const id = m ? m[1] : '';
     const src = `https://player.vimeo.com/video/${id}?autoplay=1&muted=1&loop=1`;
-    return <iframe src={src} className="w-full aspect-video rounded" allow="autoplay" allowFullScreen title={item.filename||'video'} />;
+    return kiosque
+      ? <div className="w-full max-w-[280px] aspect-square mx-auto rounded overflow-hidden bg-black"><iframe src={src} className="w-full h-full" allow="autoplay" allowFullScreen title={item.filename||'video'} /></div>
+      : <iframe src={src} className="w-full aspect-video rounded" allow="autoplay" allowFullScreen title={item.filename||'video'} />;
   }
   // Estrategia sem bordas pretas: usar aspect-ratio do proprio arquivo.
   // Detectamos as dimensoes intrinsecas ao carregar e aplicamos style com aspectRatio.
-  return <VideoNativo url={url} filename={item.filename} />;
+  return <VideoNativo url={url} filename={item.filename} kiosque={kiosque} />;
 }
 
 export default function PassoAPassoView({ kiosque = false } = {}) {
@@ -644,7 +666,7 @@ export default function PassoAPassoView({ kiosque = false } = {}) {
                     <div className={`lg:w-1/2 flex flex-col gap-3 ${kiosque ? "min-h-0 overflow-hidden" : ""}`}>
                       {videos?.map((v, idx) => (
                         <div key={'v'+idx} className="relative group">
-                          <VideoPlayer item={v} />
+                          <VideoPlayer item={v} kiosque={kiosque} />
                           {modoEdicao && (
                             <button
                               onClick={() => removerVideo(idx)}
@@ -784,7 +806,7 @@ export default function PassoAPassoView({ kiosque = false } = {}) {
                             <img
                               src={foto.data}
                               alt={foto.alt || ''}
-                              className={`w-full object-contain bg-slate-50 rounded-lg border border-slate-200 cursor-zoom-in ${kiosque ? 'max-h-[35vh]' : 'max-h-[280px]'}`}
+                              className={`bg-slate-50 rounded-lg border border-slate-200 cursor-zoom-in ${kiosque ? 'w-full max-w-[280px] aspect-square object-cover mx-auto' : 'w-full max-h-[280px] object-contain'}`}
                               onClick={() => !modoEdicao && setFotoAmpliada(foto.data)}
                             />
                             {modoEdicao && (

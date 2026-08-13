@@ -17,6 +17,34 @@ import {
 import { compressImageFile } from '../utils/imagem';
 import { useToast } from './Toast';
 
+// Icones customizados (SVG inline) — sem depender do lucide
+function IconTumbler({ size = 24, strokeWidth = 1.5 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      {/* Tampa */}
+      <path d="M7 3.5h10v2.5H7z" />
+      {/* Corpo do copo */}
+      <path d="M7.5 6l-0.5 14a1 1 0 001 1h8a1 1 0 001-1L16.5 6z" />
+      {/* Linha decorativa (marca) */}
+      <line x1="9" y1="11" x2="15" y2="11" />
+    </svg>
+  );
+}
+function IconBracelet({ size = 24, strokeWidth = 1.5 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="4"  r="1.5" />
+      <circle cx="18" cy="7"  r="1.5" />
+      <circle cx="20.5" cy="13" r="1.5" />
+      <circle cx="17" cy="19" r="1.5" />
+      <circle cx="12" cy="21" r="1.5" />
+      <circle cx="7"  cy="19" r="1.5" />
+      <circle cx="3.5" cy="13" r="1.5" />
+      <circle cx="6"  cy="7"  r="1.5" />
+    </svg>
+  );
+}
+
 const SECOES = [
   { key: 'setup',          titulo: 'Setup Inicial',           icone: Power,          tipos: null },
   { key: 'posicionamento', titulo: 'Posicionar o Produto',    icone: MoveHorizontal, tipos: [
@@ -417,10 +445,10 @@ export default function PassoAPassoView() {
       {/* SELETOR de tipo (aparece so em Posicionar antes de escolher) */}
       {secaoAtiva === 'posicionamento' && mostrarSeletor && (() => {
         const opcoes = [
-          { key: 'copo',     label: 'Copos / Garrafas', Icon: Coffee,  cor: 'bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200' },
-          { key: 'pulseira', label: 'Pulseira',         Icon: Watch,   cor: 'bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200' },
-          { key: 'caneta',   label: 'Caneta',           Icon: Pen,     cor: 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200' },
-          { key: 'outro',    label: 'Outro',            Icon: Package, cor: 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200' },
+          { key: 'copo',     label: 'Copos / Garrafas', Icon: IconTumbler,  cor: 'bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200' },
+          { key: 'pulseira', label: 'Pulseira',         Icon: IconBracelet, cor: 'bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200' },
+          { key: 'caneta',   label: 'Caneta',           Icon: Pen,          cor: 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200' },
+          { key: 'outro',    label: 'Outro',            Icon: Package,      cor: 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200' },
         ];
         return (
           <div className="card p-6 sm:p-10">

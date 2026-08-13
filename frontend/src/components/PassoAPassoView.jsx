@@ -54,23 +54,37 @@ function detectVideoType(url) {
 function VideoPlayer({ item }) {
   const url = item.url;
   const type = detectVideoType(url);
+  // Autoplay + loop + muted (necessario pro autoplay funcionar nos browsers)
   if (type === 'youtube') {
     const m = url.match(/(?:v=|youtu\.be\/|embed\/)([\w-]+)/);
     const id = m ? m[1] : '';
-    return <iframe src={`https://www.youtube.com/embed/${id}`} className="w-full aspect-video rounded" allowFullScreen title={item.filename||'video'} />;
+    // loop no YouTube exige playlist com o proprio id
+    const src = `https://www.youtube.com/embed/${id}?autoplay=1&mute=1&loop=1&playlist=${id}&controls=1&modestbranding=1`;
+    return <iframe src={src} className="w-full aspect-video rounded" allow="autoplay; encrypted-media" allowFullScreen title={item.filename||'video'} />;
   }
   if (type === 'drive') {
     const m = url.match(/\/d\/([\w-]+)/);
     const id = m ? m[1] : '';
     const embedUrl = id ? `https://drive.google.com/file/d/${id}/preview` : url;
-    return <iframe src={embedUrl} className="w-full aspect-video rounded" allowFullScreen title={item.filename||'video'} />;
+    return <iframe src={embedUrl} className="w-full aspect-video rounded" allow="autoplay" allowFullScreen title={item.filename||'video'} />;
   }
   if (type === 'vimeo') {
     const m = url.match(/vimeo\.com\/(\d+)/);
     const id = m ? m[1] : '';
-    return <iframe src={`https://player.vimeo.com/video/${id}`} className="w-full aspect-video rounded" allowFullScreen title={item.filename||'video'} />;
+    const src = `https://player.vimeo.com/video/${id}?autoplay=1&muted=1&loop=1`;
+    return <iframe src={src} className="w-full aspect-video rounded" allow="autoplay" allowFullScreen title={item.filename||'video'} />;
   }
-  return <video src={url} controls className="w-full max-h-[400px] rounded bg-black" />;
+  return (
+    <video
+      src={url}
+      controls
+      autoPlay
+      loop
+      muted
+      playsInline
+      className="w-full max-h-[400px] rounded bg-black"
+    />
+  );
 }
 
 export default function PassoAPassoView() {

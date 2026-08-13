@@ -1,20 +1,25 @@
 // Painel de Passo a Passo de Gravação Laser — MODO APRESENTAÇÃO.
-// Mostra 1 passo grande por vez com botões Anterior/Próximo.
-// Botão "Editar" permite editar inline o passo atual.
-// Sem a seção "Arte" (Helena usa outro site pra isso).
+// v2:
+//   • Seção "gravacao" (F1/F2)
+//   • Copos/Garrafas (renomeado de Stanley)
+//   • Bolinhas de cor pra copos em Parâmetros
+//   • Upload de vídeos direto (Supabase Storage) + link YouTube/Drive
 import { useEffect, useMemo, useState } from 'react';
 import {
-  Power, MoveHorizontal, Ruler, Sliders, HelpCircle,
-  Plus, Trash2, Edit2, Check, X, Camera, ArrowLeft, ArrowRight,
+  Power, MoveHorizontal, Ruler, Sliders, HelpCircle, Play,
+  Plus, Trash2, Edit2, Check, X, Camera, ArrowLeft, ArrowRight, Video, Link2,
 } from 'lucide-react';
-import { getGravacaoPassos, criarGravacaoPasso, atualizarGravacaoPasso, deletarGravacaoPasso } from '../api/client';
+import {
+  getGravacaoPassos, criarGravacaoPasso, atualizarGravacaoPasso, deletarGravacaoPasso,
+  uploadVideoGravacao, deletarVideoGravacao,
+} from '../api/client';
 import { compressImageFile } from '../utils/imagem';
 import { useToast } from './Toast';
 
 const SECOES = [
   { key: 'setup',          titulo: 'Setup Inicial',           icone: Power,          tipos: null },
   { key: 'posicionamento', titulo: 'Posicionar o Produto',    icone: MoveHorizontal, tipos: [
-    { key: 'stanley',  label: 'Stanley (copos/garrafas)' },
+    { key: 'copo',     label: 'Copos / Garrafas' },
     { key: 'pulseira', label: 'Pulseira' },
     { key: 'caneta',   label: 'Caneta' },
   ]},
@@ -24,8 +29,49 @@ const SECOES = [
     { key: 'caneta',   label: 'Canetas' },
     { key: 'copo',     label: 'Copos / Garrafas' },
   ]},
+  { key: 'gravacao',       titulo: 'Gravação (F1/F2)',        icone: Play,           tipos: null },
   { key: 'duvidas',        titulo: 'Dúvidas Gerais',          icone: HelpCircle,     tipos: null },
 ];
+
+// Cores para o seletor de copo em Parâmetros
+const CORES_COPO = [
+  { key: 'verde_vermelho', label: 'Verde ou Vermelho', bg: 'linear-gradient(90deg,#10b981 50%,#dc2626 50%)' },
+  { key: 'preto',          label: 'Preto',             bg: '#111827' },
+  { key: 'branco',         label: 'Branco',            bg: '#f8fafc', border: '#cbd5e1' },
+  { key: 'outras',         label: 'Outras cores',      bg: 'linear-gradient(90deg,#a855f7,#f59e0b,#ec4899)' },
+];
+
+// Detecta se é URL do YouTube, Vimeo, Google Drive ou vídeo direto
+function detectVideoType(url) {
+  if (!url) return 'link';
+  if (/youtube\.com|youtu\.be/i.test(url)) return 'youtube';
+  if (/drive\.google\.com/i.test(url))     return 'drive';
+  if (/vimeo\.com/i.test(url))               return 'vimeo';
+  if (/\.(mp4|webm|mov|m4v)(\?|$)/i.test(url)) return 'file';
+  return 'link';
+}
+
+function VideoPlayer({ item }) {
+  const url = item.url;
+  const type = detectVideoType(url);
+  if (type === 'youtube') {
+    const m = url.match(/(?:v=|youtu\.be\/|embed\/)([\w-]+)/);
+    const id = m ? m[1] : '';
+    return <iframe src={`https://www.youtube.com/embed/${id}`} className="w-full aspect-video rounded" allowFullScreen title={item.filename||'video'} />;
+  }
+  if (type === 'drive') {
+    const m = url.match(/\/d\/([\w-]+)/);
+    const id = m ? m[1] : '';
+    const embedUrl = id ? `https://drive.google.com/file/d/${id}/preview` : url;
+    return <iframe src={embedUrl} className="w-full aspect-video rounded" allowFullScreen title={item.filename||'video'} />;
+  }
+  if (type === 'vimeo') {
+    const m = url.match(/vimeo\.com\/(\d+)/);
+    const id = m ? m[1] : '';
+    return <iframe src={`https://player.vimeo.com/video/${id}`} className="w-full aspect-video rounded" allowFullScreen title={item.filename||'video'} />;
+  }
+  return <video src={url} controls className="w-full max-h-[400px] rounded bg-black" />;
+}
 
 export default function PassoAPassoView() {
   const toast = useToast();
@@ -33,10 +79,13 @@ export default function PassoAPassoView() {
   const [loading, setLoading] = useState(true);
   const [secaoAtiva, setSecaoAtiva] = useState('setup');
   const [tipoAtivo, setTipoAtivo] = useState({});
+  const [corAtiva, setCorAtiva] = useState('verde_vermelho');
   const [indexAtual, setIndexAtual] = useState(0);
   const [modoEdicao, setModoEdicao] = useState(false);
   const [editData, setEditData] = useState({});
-  const [uploading, setUploading] = useState(false);
+  const [uploadingFoto, setUploadingFoto] = useState(false);
+  const [uploadingVideo, setUploadingVideo] = useState(false);
+  const [linkVideoInput, setLinkVideoInput] = useState('');
   const [fotoAmpliada, setFotoAmpliada] = useState(null);
 
   useEffect(() => {
@@ -55,39 +104,44 @@ export default function PassoAPassoView() {
   const secaoDef = useMemo(() => SECOES.find((s) => s.key === secaoAtiva), [secaoAtiva]);
   const tipoAtivoSecao = tipoAtivo[secaoAtiva] || (secaoDef?.tipos?.[0]?.key ?? null);
 
+  // Mostra bolinhas de cor apenas em parametros/copo
+  const mostraCores = secaoAtiva === 'parametros' && tipoAtivoSecao === 'copo';
+
   const passosDaSecao = useMemo(() => {
     let filtrados = passos.filter((p) => p.secao === secaoAtiva);
     if (secaoDef?.tipos) {
       filtrados = filtrados.filter((p) => p.tipo_produto === tipoAtivoSecao);
     }
+    if (mostraCores) {
+      filtrados = filtrados.filter((p) => (p.cor || null) === corAtiva);
+    }
     return filtrados.sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
-  }, [passos, secaoAtiva, secaoDef, tipoAtivoSecao]);
+  }, [passos, secaoAtiva, secaoDef, tipoAtivoSecao, mostraCores, corAtiva]);
 
-  // Reset index quando muda secao/tipo
   useEffect(() => {
     setIndexAtual(0);
     setModoEdicao(false);
-  }, [secaoAtiva, tipoAtivoSecao]);
+  }, [secaoAtiva, tipoAtivoSecao, corAtiva]);
 
   const passoAtual = passosDaSecao[indexAtual];
   const total = passosDaSecao.length;
 
-  // Sincroniza editData com passoAtual quando entra em edição
   useEffect(() => {
     if (modoEdicao && passoAtual) {
       setEditData({
         titulo: passoAtual.titulo || '',
         descricao: passoAtual.descricao || '',
         fotos: passoAtual.fotos || [],
+        videos: passoAtual.videos || [],
       });
+      setLinkVideoInput('');
     }
   }, [modoEdicao, passoAtual?.id]);
 
-  // Setas do teclado navegam
   useEffect(() => {
     if (fotoAmpliada) return;
     const h = (e) => {
-      if (modoEdicao) return; // não navega em modo edição
+      if (modoEdicao) return;
       if (e.key === 'ArrowRight') proximo();
       if (e.key === 'ArrowLeft')  anterior();
     };
@@ -122,15 +176,17 @@ export default function PassoAPassoView() {
     const payload = {
       secao: secaoAtiva,
       tipo_produto: secaoDef?.tipos ? tipoAtivoSecao : null,
+      cor: mostraCores ? corAtiva : null,
       ordem: maxOrdem + 10,
       titulo: 'Novo passo',
       descricao: '',
       fotos: [],
+      videos: [],
     };
     try {
       const novo = await criarGravacaoPasso(payload);
       setPassos((prev) => [...prev, novo]);
-      setIndexAtual(passosDaSecao.length); // vai pro novo
+      setIndexAtual(total);
       setModoEdicao(true);
     } catch (e) {
       toast.error('Erro ao criar: ' + (e.message || e));
@@ -152,7 +208,6 @@ export default function PassoAPassoView() {
   };
 
   const moverPasso = async (direcao) => {
-    if (!passoAtual) return;
     const idx = indexAtual;
     const alvoIdx = direcao === 'up' ? idx - 1 : idx + 1;
     if (alvoIdx < 0 || alvoIdx >= total) return;
@@ -171,21 +226,48 @@ export default function PassoAPassoView() {
   };
 
   const uploadFoto = async (file) => {
-    if (!file || !passoAtual) return;
-    setUploading(true);
+    if (!file) return;
+    setUploadingFoto(true);
     try {
       const dataUrl = await compressImageFile(file);
-      const fotos = [...(editData.fotos || []), { data: dataUrl, alt: file.name }];
-      setEditData((d) => ({ ...d, fotos }));
+      setEditData((d) => ({ ...d, fotos: [...(d.fotos || []), { data: dataUrl, alt: file.name }] }));
     } catch (e) {
       toast.error('Erro ao processar foto: ' + (e.message || e));
     } finally {
-      setUploading(false);
+      setUploadingFoto(false);
     }
+  };
+
+  const uploadVideo = async (file) => {
+    if (!file) return;
+    setUploadingVideo(true);
+    try {
+      const { url, path, filename } = await uploadVideoGravacao(file);
+      setEditData((d) => ({ ...d, videos: [...(d.videos || []), { url, path, filename, source: 'upload' }] }));
+    } catch (e) {
+      toast.error('Erro ao subir vídeo: ' + (e.message || e));
+    } finally {
+      setUploadingVideo(false);
+    }
+  };
+
+  const adicionarLinkVideo = () => {
+    const url = linkVideoInput.trim();
+    if (!url) return;
+    setEditData((d) => ({ ...d, videos: [...(d.videos || []), { url, filename: url, source: 'link' }] }));
+    setLinkVideoInput('');
   };
 
   const removerFoto = (idx) => {
     setEditData((d) => ({ ...d, fotos: (d.fotos || []).filter((_, i) => i !== idx) }));
+  };
+
+  const removerVideo = async (idx) => {
+    const v = editData.videos?.[idx];
+    if (v?.source === 'upload' && v?.path) {
+      try { await deletarVideoGravacao(v.path); } catch (e) { /* ignora */ }
+    }
+    setEditData((d) => ({ ...d, videos: (d.videos || []).filter((_, i) => i !== idx) }));
   };
 
   if (loading) return <div className="text-slate-500 text-sm py-8 text-center">Carregando passo a passo…</div>;
@@ -193,7 +275,7 @@ export default function PassoAPassoView() {
   return (
     <div className="space-y-4">
       {/* Navegação das seções */}
-      <div className="card p-2 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1">
+      <div className="card p-2 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-1">
         {SECOES.map((s) => {
           const Icon = s.icone;
           const ativa = s.key === secaoAtiva;
@@ -212,7 +294,7 @@ export default function PassoAPassoView() {
         })}
       </div>
 
-      {/* Sub-abas por tipo de produto (se aplicável) */}
+      {/* Sub-abas por tipo de produto */}
       {secaoDef?.tipos && (
         <div className="card p-2 flex flex-wrap gap-1">
           {secaoDef.tipos.map((t) => {
@@ -232,10 +314,36 @@ export default function PassoAPassoView() {
         </div>
       )}
 
+      {/* Bolinhas de cor pra copo em Parâmetros */}
+      {mostraCores && (
+        <div className="card p-3 flex flex-wrap items-center gap-3">
+          <span className="text-xs font-semibold uppercase text-slate-500 tracking-wide">Cor do copo:</span>
+          {CORES_COPO.map((c) => {
+            const ativa = corAtiva === c.key;
+            return (
+              <button
+                key={c.key}
+                onClick={() => setCorAtiva(c.key)}
+                className="flex items-center gap-2 group"
+                title={c.label}
+              >
+                <span
+                  className={`w-8 h-8 rounded-full transition-all ${
+                    ativa ? 'ring-2 ring-offset-2 ring-indigo-500 scale-110' : 'ring-1 ring-slate-200 hover:scale-105'
+                  }`}
+                  style={{ background: c.bg, border: c.border ? `1px solid ${c.border}` : undefined }}
+                />
+                <span className={`text-sm ${ativa ? 'font-semibold text-slate-800' : 'text-slate-600'}`}>{c.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {/* SLIDE ATUAL */}
       {total === 0 ? (
         <div className="card p-8 text-center">
-          <p className="text-slate-400 text-sm mb-3">Nenhum passo cadastrado nesta seção.</p>
+          <p className="text-slate-400 text-sm mb-3">Nenhum passo cadastrado nesta seção{mostraCores ? ` para "${CORES_COPO.find(c => c.key === corAtiva)?.label}"` : ''}.</p>
           <button onClick={adicionarPasso} className="btn-primary text-sm">
             <Plus size={14}/> Criar primeiro passo
           </button>
@@ -243,36 +351,29 @@ export default function PassoAPassoView() {
       ) : (
         <>
           <div className="card p-5 sm:p-8 min-h-[400px] flex flex-col">
-            {/* Progresso + ações */}
             <div className="flex items-center justify-between mb-4 gap-3">
               <div className="text-xs font-semibold text-indigo-600 uppercase tracking-wide">
                 Passo {indexAtual + 1} de {total}
               </div>
               <div className="flex gap-1">
                 {!modoEdicao && (
-                  <>
-                    <button onClick={() => setModoEdicao(true)} className="btn-outline text-xs">
-                      <Edit2 size={12}/> Editar
-                    </button>
-                  </>
+                  <button onClick={() => setModoEdicao(true)} className="btn-outline text-xs">
+                    <Edit2 size={12}/> Editar
+                  </button>
                 )}
                 {modoEdicao && (
                   <>
                     <button onClick={() => moverPasso('up')}   disabled={indexAtual === 0}         className="p-1.5 rounded hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed" title="Mover pra cima"><ArrowLeft size={14}/></button>
                     <button onClick={() => moverPasso('down')} disabled={indexAtual === total - 1} className="p-1.5 rounded hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed" title="Mover pra baixo"><ArrowRight size={14}/></button>
                     <button onClick={excluirPasso}    className="p-1.5 rounded hover:bg-rose-100 text-rose-600" title="Excluir passo"><Trash2 size={14}/></button>
-                    <button onClick={() => setModoEdicao(false)} className="btn-outline text-xs">
-                      <X size={12}/> Cancelar
-                    </button>
-                    <button onClick={salvarEdicao} className="btn-primary text-xs">
-                      <Check size={12}/> Salvar
-                    </button>
+                    <button onClick={() => setModoEdicao(false)} className="btn-outline text-xs"><X size={12}/> Cancelar</button>
+                    <button onClick={salvarEdicao} className="btn-primary text-xs"><Check size={12}/> Salvar</button>
                   </>
                 )}
               </div>
             </div>
 
-            {/* Título grande */}
+            {/* Título */}
             <div className="mb-4">
               {modoEdicao ? (
                 <input
@@ -287,13 +388,14 @@ export default function PassoAPassoView() {
               )}
             </div>
 
-            {/* Conteúdo: foto grande + descrição */}
+            {/* Conteúdo */}
             <div className="flex-1 flex flex-col lg:flex-row gap-6">
-              {/* Fotos */}
-              {(modoEdicao || (passoAtual.fotos && passoAtual.fotos.length > 0)) && (
-                <div className="lg:w-1/2 flex flex-col gap-2">
+              {/* Coluna esquerda: fotos + videos */}
+              {(modoEdicao || (passoAtual.fotos?.length > 0) || (passoAtual.videos?.length > 0)) && (
+                <div className="lg:w-1/2 flex flex-col gap-3">
+                  {/* Fotos */}
                   {(modoEdicao ? editData.fotos : passoAtual.fotos)?.map((foto, idx) => (
-                    <div key={idx} className="relative group">
+                    <div key={'f'+idx} className="relative group">
                       <img
                         src={foto.data}
                         alt={foto.alt || ''}
@@ -304,35 +406,70 @@ export default function PassoAPassoView() {
                         <button
                           onClick={() => removerFoto(idx)}
                           className="absolute top-2 right-2 bg-rose-500 hover:bg-rose-600 text-white rounded-full w-7 h-7 grid place-items-center text-sm"
-                          title="Remover foto"
                         >×</button>
                       )}
                     </div>
                   ))}
+
+                  {/* Videos */}
+                  {(modoEdicao ? editData.videos : passoAtual.videos)?.map((v, idx) => (
+                    <div key={'v'+idx} className="relative group">
+                      <VideoPlayer item={v} />
+                      {modoEdicao && (
+                        <button
+                          onClick={() => removerVideo(idx)}
+                          className="absolute top-2 right-2 bg-rose-500 hover:bg-rose-600 text-white rounded-full w-7 h-7 grid place-items-center text-sm z-10"
+                        >×</button>
+                      )}
+                    </div>
+                  ))}
+
+                  {/* Upload/Link em modo edição */}
                   {modoEdicao && (
-                    <label className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 cursor-pointer transition-colors">
-                      <Camera size={14}/>
-                      {uploading ? 'Processando…' : 'Adicionar foto'}
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(e) => uploadFoto(e.target.files?.[0])}
-                        disabled={uploading}
-                      />
-                    </label>
+                    <div className="space-y-2">
+                      <div className="flex gap-2 flex-wrap">
+                        <label className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 cursor-pointer transition-colors">
+                          <Camera size={14}/>
+                          {uploadingFoto ? 'Processando…' : 'Foto'}
+                          <input type="file" accept="image/*" className="hidden"
+                            onChange={(e) => uploadFoto(e.target.files?.[0])}
+                            disabled={uploadingFoto}
+                          />
+                        </label>
+                        <label className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 cursor-pointer transition-colors">
+                          <Video size={14}/>
+                          {uploadingVideo ? 'Enviando…' : 'Vídeo (upload)'}
+                          <input type="file" accept="video/*" className="hidden"
+                            onChange={(e) => uploadVideo(e.target.files?.[0])}
+                            disabled={uploadingVideo}
+                          />
+                        </label>
+                      </div>
+                      <div className="flex gap-2">
+                        <input
+                          type="url"
+                          className="input flex-1 text-sm"
+                          placeholder="Cola link YouTube/Drive/Vimeo aqui"
+                          value={linkVideoInput}
+                          onChange={(e) => setLinkVideoInput(e.target.value)}
+                        />
+                        <button onClick={adicionarLinkVideo} disabled={!linkVideoInput.trim()} className="btn-outline text-sm disabled:opacity-50">
+                          <Link2 size={14}/> Adicionar link
+                        </button>
+                      </div>
+                    </div>
                   )}
                 </div>
               )}
 
-              {/* Descrição */}
-              <div className={(modoEdicao || (passoAtual.fotos && passoAtual.fotos.length > 0)) ? 'lg:w-1/2 flex' : 'w-full flex'}>
+              {/* Coluna direita: descrição */}
+              <div className={(modoEdicao || (passoAtual.fotos?.length > 0) || (passoAtual.videos?.length > 0)) ? 'lg:w-1/2 flex' : 'w-full flex'}>
                 {modoEdicao ? (
                   <textarea
                     className="input w-full min-h-[300px] text-base leading-relaxed"
                     value={editData.descricao}
                     onChange={(e) => setEditData((d) => ({ ...d, descricao: e.target.value }))}
-                    placeholder="Descrição detalhada do passo (aceita quebras de linha e emojis ⚠️✅❌)"
+                    placeholder="Descrição detalhada (aceita quebras de linha e emojis ⚠️✅❌)"
                   />
                 ) : (
                   <p className="text-base sm:text-lg text-slate-700 whitespace-pre-wrap leading-relaxed">{passoAtual.descricao}</p>
@@ -341,18 +478,12 @@ export default function PassoAPassoView() {
             </div>
           </div>
 
-          {/* Navegação Anterior / Próximo */}
+          {/* Navegação */}
           {!modoEdicao && (
             <div className="flex items-center justify-between gap-3">
-              <button
-                onClick={anterior}
-                disabled={indexAtual === 0}
-                className="btn-outline flex-1 sm:flex-none disabled:opacity-40 disabled:cursor-not-allowed"
-              >
+              <button onClick={anterior} disabled={indexAtual === 0} className="btn-outline flex-1 sm:flex-none disabled:opacity-40 disabled:cursor-not-allowed">
                 <ArrowLeft size={16}/> Anterior
               </button>
-
-              {/* Dots de progresso */}
               <div className="flex gap-1.5 items-center">
                 {passosDaSecao.map((_, i) => (
                   <button
@@ -361,22 +492,15 @@ export default function PassoAPassoView() {
                     className={`w-2.5 h-2.5 rounded-full transition-all ${
                       i === indexAtual ? 'bg-indigo-500 w-6' : 'bg-slate-300 hover:bg-slate-400'
                     }`}
-                    title={`Passo ${i + 1}`}
                   />
                 ))}
               </div>
-
-              <button
-                onClick={proximo}
-                disabled={indexAtual === total - 1}
-                className="btn-primary flex-1 sm:flex-none disabled:opacity-40 disabled:cursor-not-allowed"
-              >
+              <button onClick={proximo} disabled={indexAtual === total - 1} className="btn-primary flex-1 sm:flex-none disabled:opacity-40 disabled:cursor-not-allowed">
                 Próximo <ArrowRight size={16}/>
               </button>
             </div>
           )}
 
-          {/* Adicionar novo passo (só em modo edição) */}
           {modoEdicao && (
             <div className="text-center">
               <button onClick={adicionarPasso} className="btn-outline text-sm">
@@ -387,12 +511,8 @@ export default function PassoAPassoView() {
         </>
       )}
 
-      {/* Lightbox */}
       {fotoAmpliada && (
-        <div
-          className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
-          onClick={() => setFotoAmpliada(null)}
-        >
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4" onClick={() => setFotoAmpliada(null)}>
           <img src={fotoAmpliada} alt="" className="max-w-full max-h-full object-contain rounded"/>
           <button className="absolute top-4 right-4 text-white text-3xl" onClick={() => setFotoAmpliada(null)}>×</button>
         </div>

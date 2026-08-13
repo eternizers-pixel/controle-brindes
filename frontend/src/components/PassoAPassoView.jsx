@@ -544,9 +544,11 @@ export default function PassoAPassoView() {
               const temVideos = (videos?.length > 0) || modoEdicao;
               const temFotos  = (fotos?.length  > 0) || modoEdicao;
 
+              // Layout: video sempre na esquerda. Se nao ha video mas tem foto, foto vai pra esquerda (bem grande).
+              const fotoNaEsquerda = !temVideos && (fotos?.length > 0);
               return (
                 <div className="flex-1 flex flex-col lg:flex-row gap-6">
-                  {/* Coluna esquerda: VIDEOS (+ upload de video em edicao) */}
+                  {/* COLUNA ESQUERDA: video, OU foto grande se nao ha video */}
                   {temVideos && (
                     <div className="lg:w-1/2 flex flex-col gap-3">
                       {videos?.map((v, idx) => (
@@ -586,9 +588,39 @@ export default function PassoAPassoView() {
                       )}
                     </div>
                   )}
+                  {fotoNaEsquerda && (
+                    <div className="lg:w-1/2 flex flex-col gap-2">
+                      {fotos.map((foto, idx) => (
+                        <div key={'fL'+idx} className="relative group">
+                          <img
+                            src={foto.data}
+                            alt={foto.alt || ''}
+                            className="w-full max-h-[600px] object-contain bg-slate-50 rounded-lg border border-slate-200 cursor-zoom-in"
+                            onClick={() => !modoEdicao && setFotoAmpliada(foto.data)}
+                          />
+                          {modoEdicao && (
+                            <button
+                              onClick={() => removerFoto(idx)}
+                              className="absolute top-2 right-2 bg-rose-500 hover:bg-rose-600 text-white rounded-full w-7 h-7 grid place-items-center text-sm"
+                            >×</button>
+                          )}
+                        </div>
+                      ))}
+                      {modoEdicao && (
+                        <label className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 cursor-pointer transition-colors self-start">
+                          <Camera size={14}/>
+                          {uploadingFoto ? 'Processando…' : 'Adicionar foto'}
+                          <input type="file" accept="image/*" className="hidden"
+                            onChange={(e) => uploadFoto(e.target.files?.[0])}
+                            disabled={uploadingFoto}
+                          />
+                        </label>
+                      )}
+                    </div>
+                  )}
 
-                  {/* Coluna direita: DESCRIÇÃO + FOTOS abaixo (+ upload de foto em edicao) */}
-                  <div className={temVideos ? 'lg:w-1/2 flex flex-col gap-4' : 'w-full flex flex-col gap-4'}>
+                  {/* COLUNA DIREITA: DESCRIÇÃO + FOTOS abaixo (so quando foto NAO ta na esquerda) */}
+                  <div className={(temVideos || fotoNaEsquerda) ? 'lg:w-1/2 flex flex-col gap-4' : 'w-full flex flex-col gap-4'}>
                     <div>
                       {modoEdicao ? (
                         <input
@@ -626,7 +658,7 @@ export default function PassoAPassoView() {
                       )}
                     </div>
 
-                    {temFotos && (
+                    {temFotos && !fotoNaEsquerda && (
                       <div className="flex flex-col gap-2">
                         {fotos?.map((foto, idx) => (
                           <div key={'f'+idx} className="relative group">

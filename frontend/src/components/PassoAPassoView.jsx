@@ -6,7 +6,7 @@
 //   • Upload de vídeos direto (Supabase Storage) + link YouTube/Drive
 import { useEffect, useMemo, useState } from 'react';
 import {
-  Power, MoveHorizontal, Ruler, Sliders, HelpCircle, Play,
+  Power, MoveHorizontal, Ruler, Sliders, HelpCircle, Play, Palette,
   Plus, Trash2, Edit2, Check, X, Camera, ArrowLeft, ArrowRight, Video, Link2,
   Coffee, Watch, Pen, Package,
 } from 'lucide-react';
@@ -26,6 +26,7 @@ const SECOES = [
     { key: 'outro',    label: 'Outro' },
   ]},
   { key: 'altura',         titulo: 'Ajustar Altura do Laser', icone: Ruler,          tipos: null },
+  { key: 'importar_arte',  titulo: 'Importar Arte',           icone: Palette,        tipos: null },
   { key: 'parametros',     titulo: 'Parâmetros de Gravação',  icone: Sliders,        tipos: [
     { key: 'pulseira', label: 'Pulseiras / Folheados' },
     { key: 'caneta',   label: 'Canetas' },
@@ -494,22 +495,7 @@ export default function PassoAPassoView() {
               </div>
             </div>
 
-            {/* Título */}
-            <div className="mb-4">
-              {modoEdicao ? (
-                <input
-                  type="text"
-                  className="input w-full text-2xl sm:text-3xl font-bold"
-                  value={editData.titulo}
-                  onChange={(e) => setEditData((d) => ({ ...d, titulo: e.target.value }))}
-                  placeholder="Título do passo"
-                />
-              ) : (
-                <h2 className="text-2xl sm:text-3xl font-bold text-slate-800 leading-tight">{passoAtual.titulo}</h2>
-              )}
-            </div>
-
-            {/* Conteúdo */}
+            {/* Conteúdo (título fica dentro da coluna da direita, acima da descrição) */}
             {(() => {
               const fotos  = modoEdicao ? editData.fotos  : passoAtual.fotos;
               const videos = modoEdicao ? editData.videos : passoAtual.videos;
@@ -561,6 +547,19 @@ export default function PassoAPassoView() {
 
                   {/* Coluna direita: DESCRIÇÃO + FOTOS abaixo (+ upload de foto em edicao) */}
                   <div className={temVideos ? 'lg:w-1/2 flex flex-col gap-4' : 'w-full flex flex-col gap-4'}>
+                    <div>
+                      {modoEdicao ? (
+                        <input
+                          type="text"
+                          className="input w-full text-2xl sm:text-3xl font-bold mb-3"
+                          value={editData.titulo}
+                          onChange={(e) => setEditData((d) => ({ ...d, titulo: e.target.value }))}
+                          placeholder="Título do passo"
+                        />
+                      ) : (
+                        <h2 className="text-2xl sm:text-3xl font-bold text-slate-800 leading-tight mb-3">{passoAtual.titulo}</h2>
+                      )}
+                    </div>
                     <div className="flex-1">
                       {modoEdicao ? (
                         <textarea

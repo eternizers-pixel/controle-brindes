@@ -50,7 +50,6 @@ const SECOES = [
     { key: 'caneta',   label: 'Canetas' },
     { key: 'copo',     label: 'Copos / Garrafas' },
   ]},
-  { key: 'gravacao',       titulo: 'Gravação (F1/F2)',        icone: Play,           tipos: null },
   { key: 'duvidas',        titulo: 'Dúvidas Gerais',          icone: HelpCircle,     tipos: null },
 ];
 

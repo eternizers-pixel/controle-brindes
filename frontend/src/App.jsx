@@ -22,7 +22,6 @@ export default function App() {
         <Route path="estoque"       element={<Navigate to="/entregar" replace />} />
         <Route path="brindes"       element={<Brindes />} />
         <Route path="parametros"    element={<Parametros />} />
-        <Route path="passo-a-passo"  element={<PassoAPasso />} />
         <Route path="niveis"        element={<NiveisBrinde />} />
         <Route path="patrocinios"   element={<Patrocinios />} />
         <Route path="dashboard"     element={<Dashboard />} />
@@ -30,6 +29,8 @@ export default function App() {
         <Route path="relatorios"    element={<Relatorios />} />
         <Route path="pesquisa-xbz"  element={<PesquisaXBZ />} />
       </Route>
+      {/* Rota kiosque - fora do Layout (sem sidebar) */}
+      <Route path="/passo-a-passo" element={<PassoAPasso />} />
     </Routes>
   );
 }

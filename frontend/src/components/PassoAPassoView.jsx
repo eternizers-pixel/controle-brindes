@@ -61,10 +61,6 @@ const CORES_POR_TIPO = {
     { key: 'verde_vermelho', label: 'Verde ou Vermelho', bg: 'linear-gradient(90deg,#10b981 50%,#dc2626 50%)' },
     { key: 'outras',         label: 'Outras cores',      bg: 'linear-gradient(90deg,#a855f7,#f59e0b,#ec4899)' },
   ],
-  caneta: [
-    { key: 'escura', label: 'Cor escura', bg: '#111827' },
-    { key: 'branca', label: 'Branca',     bg: '#f8fafc', border: '#cbd5e1' },
-  ],
 };
 
 // Configuração visual das 4 métricas de parâmetros
@@ -762,13 +758,6 @@ export default function PassoAPassoView() {
                             value={modoEdicao ? (editData.parametros?.potencia || '') : passoAtual.parametros?.potencia}
                             onChange={(v) => setEditData((d) => ({ ...d, parametros: { ...(d.parametros||{}), potencia: v } }))}
                           />
-                        </div>
-                        {/* Callout F2 pra gravar essa passagem */}
-                        <div className="mb-3 p-3 rounded-lg bg-rose-50 border border-rose-200 flex items-start gap-2">
-                          <Zap size={18} className="text-rose-500 flex-shrink-0 mt-0.5"/>
-                          <div className="text-sm text-rose-800">
-                            <strong>Aperta F2</strong> pra gravar esta passagem. Depois de terminar, configure a próxima passagem (Próximo →) e aperta F2 de novo.
-                          </div>
                         </div>
                       </>
                     )}

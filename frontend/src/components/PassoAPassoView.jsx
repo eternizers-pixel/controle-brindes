@@ -99,7 +99,7 @@ function TextoFormatado({ children, className }) {
 }
 
 // Card visual pra cada parametro (Hachura, Angulo, Velocidade, Potencia)
-function ParamCard({ label, value, color, icone, modoEdicao, onChange }) {
+function ParamCard({ label, value, color, icone, modoEdicao, onChange, compacto = false }) {
   const palette = {
     blue:    { bg: 'bg-blue-50',    border: 'border-blue-200',    label: 'text-blue-700',    value: 'text-blue-900' },
     purple:  { bg: 'bg-purple-50',  border: 'border-purple-200',  label: 'text-purple-700',  value: 'text-purple-900' },
@@ -107,21 +107,21 @@ function ParamCard({ label, value, color, icone, modoEdicao, onChange }) {
     amber:   { bg: 'bg-amber-50',   border: 'border-amber-200',   label: 'text-amber-700',   value: 'text-amber-900' },
   }[color] || { bg: 'bg-slate-50', border: 'border-slate-200', label: 'text-slate-600', value: 'text-slate-900' };
   return (
-    <div className={`${palette.bg} border-2 ${palette.border} rounded-xl p-3 sm:p-4 text-center flex flex-col items-center gap-1`}>
+    <div className={`${palette.bg} border-2 ${palette.border} rounded-xl text-center flex flex-col items-center gap-0.5 ${compacto ? 'p-1.5' : 'p-3 sm:p-4'}`}>
       {icone && (
-        <img src={icone} alt="" className="h-10 object-contain max-w-full mb-0.5" />
+        <img src={icone} alt="" className={`${compacto ? 'h-6' : 'h-10'} object-contain max-w-full`} />
       )}
-      <div className={`text-[10px] sm:text-xs font-bold uppercase tracking-wider ${palette.label}`}>{label}</div>
+      <div className={`font-bold uppercase tracking-wider ${palette.label} ${compacto ? 'text-[9px]' : 'text-[10px] sm:text-xs'}`}>{label}</div>
       {modoEdicao ? (
         <input
           type="text"
           value={value || ''}
           onChange={(e) => onChange && onChange(e.target.value)}
           placeholder="—"
-          className={`w-full mt-0.5 text-2xl sm:text-3xl font-black text-center bg-white/70 rounded border border-slate-200 tabular-nums ${palette.value}`}
+          className={`w-full mt-0.5 font-black text-center bg-white/70 rounded border border-slate-200 tabular-nums ${palette.value} ${compacto ? 'text-lg' : 'text-2xl sm:text-3xl'}`}
         />
       ) : (
-        <div className={`text-2xl sm:text-3xl font-black ${palette.value} tabular-nums`}>{value || '—'}</div>
+        <div className={`font-black ${palette.value} tabular-nums ${compacto ? 'text-lg' : 'text-2xl sm:text-3xl'}`}>{value || '—'}</div>
       )}
     </div>
   );
@@ -132,7 +132,7 @@ function VideoNativo({ url, filename, kiosque = false }) {
   const [aspectRatio, setAspectRatio] = useState(null);
   if (kiosque) {
     return (
-      <div className="w-full max-w-[280px] aspect-square mx-auto rounded overflow-hidden bg-black">
+      <div className="w-full max-w-[200px] aspect-square mx-auto rounded overflow-hidden bg-black">
         <video
           src={url}
           controls
@@ -217,7 +217,7 @@ function VideoPlayer({ item, kiosque = false }) {
     // loop no YouTube exige playlist com o proprio id
     const src = `https://www.youtube.com/embed/${id}?autoplay=1&mute=1&loop=1&playlist=${id}&controls=1&modestbranding=1`;
     return kiosque
-      ? <div className="w-full max-w-[280px] aspect-square mx-auto rounded overflow-hidden bg-black"><iframe src={src} className="w-full h-full" allow="autoplay; encrypted-media" allowFullScreen title={item.filename||'video'} /></div>
+      ? <div className="w-full max-w-[200px] aspect-square mx-auto rounded overflow-hidden bg-black"><iframe src={src} className="w-full h-full" allow="autoplay; encrypted-media" allowFullScreen title={item.filename||'video'} /></div>
       : <iframe src={src} className="w-full aspect-video rounded" allow="autoplay; encrypted-media" allowFullScreen title={item.filename||'video'} />;
   }
   if (type === 'drive') {
@@ -225,7 +225,7 @@ function VideoPlayer({ item, kiosque = false }) {
     const id = m ? m[1] : '';
     const embedUrl = id ? `https://drive.google.com/file/d/${id}/preview` : url;
     return kiosque
-      ? <div className="w-full max-w-[280px] aspect-square mx-auto rounded overflow-hidden bg-black"><iframe src={embedUrl} className="w-full h-full" allow="autoplay" allowFullScreen title={item.filename||'video'} /></div>
+      ? <div className="w-full max-w-[200px] aspect-square mx-auto rounded overflow-hidden bg-black"><iframe src={embedUrl} className="w-full h-full" allow="autoplay" allowFullScreen title={item.filename||'video'} /></div>
       : <iframe src={embedUrl} className="w-full aspect-video rounded" allow="autoplay" allowFullScreen title={item.filename||'video'} />;
   }
   if (type === 'vimeo') {
@@ -233,7 +233,7 @@ function VideoPlayer({ item, kiosque = false }) {
     const id = m ? m[1] : '';
     const src = `https://player.vimeo.com/video/${id}?autoplay=1&muted=1&loop=1`;
     return kiosque
-      ? <div className="w-full max-w-[280px] aspect-square mx-auto rounded overflow-hidden bg-black"><iframe src={src} className="w-full h-full" allow="autoplay" allowFullScreen title={item.filename||'video'} /></div>
+      ? <div className="w-full max-w-[200px] aspect-square mx-auto rounded overflow-hidden bg-black"><iframe src={src} className="w-full h-full" allow="autoplay" allowFullScreen title={item.filename||'video'} /></div>
       : <iframe src={src} className="w-full aspect-video rounded" allow="autoplay" allowFullScreen title={item.filename||'video'} />;
   }
   // Estrategia sem bordas pretas: usar aspect-ratio do proprio arquivo.
@@ -501,11 +501,11 @@ export default function PassoAPassoView({ kiosque = false } = {}) {
             <button
               key={s.key}
               onClick={() => { setIndexAtual(0); setSecaoAtiva(s.key); }}
-              className={`flex flex-col items-center gap-1 p-2 rounded-lg text-xs font-medium transition-all ${
+              className={`flex flex-col items-center gap-0.5 rounded-lg font-medium transition-all ${kiosque ? 'p-1 text-[10px]' : 'p-2 text-xs'} ${
                 ativa ? 'bg-indigo-500 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'
               }`}
             >
-              <Icon size={18} />
+              <Icon size={kiosque ? 14 : 18} />
               <span className="leading-tight text-center">{s.titulo}</span>
             </button>
           );
@@ -521,7 +521,7 @@ export default function PassoAPassoView({ kiosque = false } = {}) {
               <button
                 key={t.key}
                 onClick={() => { setIndexAtual(0); setTipoAtivo((prev) => ({ ...prev, [secaoAtiva]: t.key })); }}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                className={`rounded-lg text-xs font-medium transition-all ${kiosque ? 'px-2 py-1' : 'px-3 py-1.5'} ${
                   ativa ? 'bg-amber-500 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                 }`}
               >
@@ -548,12 +548,12 @@ export default function PassoAPassoView({ kiosque = false } = {}) {
                 title={c.label}
               >
                 <span
-                  className={`w-8 h-8 rounded-full transition-all ${
+                  className={`rounded-full transition-all ${kiosque ? 'w-6 h-6' : 'w-8 h-8'} ${
                     ativa ? 'ring-2 ring-offset-2 ring-indigo-500 scale-110' : 'ring-1 ring-slate-200 hover:scale-105'
                   }`}
                   style={{ background: c.bg, border: c.border ? `1px solid ${c.border}` : undefined }}
                 />
-                <span className={`text-sm ${ativa ? 'font-semibold text-slate-800' : 'text-slate-600'}`}>{c.label}</span>
+                <span className={`${kiosque ? 'text-xs' : 'text-sm'} ${ativa ? 'font-semibold text-slate-800' : 'text-slate-600'}`}>{c.label}</span>
               </button>
             );
           })}
@@ -660,7 +660,7 @@ export default function PassoAPassoView({ kiosque = false } = {}) {
               // Layout: video sempre na esquerda. Se nao ha video mas tem foto, foto vai pra esquerda (bem grande).
               const fotoNaEsquerda = !temVideos && (fotos?.length > 0);
               return (
-                <div className={`flex-1 min-h-0 flex flex-col lg:flex-row ${kiosque ? "gap-2 overflow-hidden" : "gap-6"}`}>
+                <div className={`flex-1 min-h-0 flex flex-col lg:flex-row ${kiosque ? "gap-2 overflow-auto" : "gap-6"}`}>
                   {/* COLUNA ESQUERDA: video, OU foto grande se nao ha video */}
                   {temVideos && (
                     <div className={`lg:w-1/2 flex flex-col gap-3 ${kiosque ? "min-h-0 overflow-hidden" : ""}`}>
@@ -744,7 +744,7 @@ export default function PassoAPassoView({ kiosque = false } = {}) {
                           placeholder="Título do passo"
                         />
                       ) : (
-                        <h2 className={`font-bold text-slate-800 leading-tight mb-2 ${kiosque ? 'text-xl sm:text-2xl' : 'text-2xl sm:text-3xl mb-3'}`}>{passoAtual.titulo}</h2>
+                        <h2 className={`font-bold text-slate-800 leading-tight mb-2 ${kiosque ? 'text-base sm:text-xl' : 'text-2xl sm:text-3xl mb-3'}`}>{passoAtual.titulo}</h2>
                       )}
                     </div>
                     {/* Grid visual de parametros de gravacao (quando o passo tem eles) */}
@@ -756,26 +756,26 @@ export default function PassoAPassoView({ kiosque = false } = {}) {
                             <Settings size={12}/> Editar ícones
                           </button>
                         </div>
-                        <div className="grid grid-cols-2 gap-3 mb-3">
-                          <ParamCard label="HACHURA" color="blue"
+                        <div className={`grid grid-cols-2 mb-2 ${kiosque ? 'gap-1.5' : 'gap-3'}`}>
+                          <ParamCard label="HACHURA" color="blue" compacto={kiosque}
                             icone={icones.hachura}
                             modoEdicao={modoEdicao}
                             value={modoEdicao ? (editData.parametros?.hachura || '') : passoAtual.parametros?.hachura}
                             onChange={(v) => setEditData((d) => ({ ...d, parametros: { ...(d.parametros||{}), hachura: v } }))}
                           />
-                          <ParamCard label="ÂNGULO" color="purple"
+                          <ParamCard label="ÂNGULO" color="purple" compacto={kiosque}
                             icone={icones.angulo}
                             modoEdicao={modoEdicao}
                             value={modoEdicao ? (editData.parametros?.angulo || '') : passoAtual.parametros?.angulo}
                             onChange={(v) => setEditData((d) => ({ ...d, parametros: { ...(d.parametros||{}), angulo: v } }))}
                           />
-                          <ParamCard label="VELOCIDADE" color="emerald"
+                          <ParamCard label="VELOCIDADE" color="emerald" compacto={kiosque}
                             icone={icones.velocidade}
                             modoEdicao={modoEdicao}
                             value={modoEdicao ? (editData.parametros?.velocidade || '') : passoAtual.parametros?.velocidade}
                             onChange={(v) => setEditData((d) => ({ ...d, parametros: { ...(d.parametros||{}), velocidade: v } }))}
                           />
-                          <ParamCard label="POTÊNCIA" color="amber"
+                          <ParamCard label="POTÊNCIA" color="amber" compacto={kiosque}
                             icone={icones.potencia}
                             modoEdicao={modoEdicao}
                             value={modoEdicao ? (editData.parametros?.potencia || '') : passoAtual.parametros?.potencia}
@@ -794,7 +794,7 @@ export default function PassoAPassoView({ kiosque = false } = {}) {
                         />
                       ) : (
                         passoAtual.descricao && (
-                          <TextoFormatado className="text-base sm:text-lg text-slate-700 leading-relaxed">{passoAtual.descricao}</TextoFormatado>
+                          <TextoFormatado className={`text-slate-700 leading-relaxed ${kiosque ? 'text-xs sm:text-sm' : 'text-base sm:text-lg'}`}>{passoAtual.descricao}</TextoFormatado>
                         )
                       )}
                     </div>
@@ -806,7 +806,7 @@ export default function PassoAPassoView({ kiosque = false } = {}) {
                             <img
                               src={foto.data}
                               alt={foto.alt || ''}
-                              className={`bg-slate-50 rounded-lg border border-slate-200 cursor-zoom-in ${kiosque ? 'w-full max-w-[280px] aspect-square object-cover mx-auto' : 'w-full max-h-[280px] object-contain'}`}
+                              className={`bg-slate-50 rounded-lg border border-slate-200 cursor-zoom-in ${kiosque ? 'w-full max-w-[200px] aspect-square object-cover mx-auto' : 'w-full max-h-[280px] object-contain'}`}
                               onClick={() => !modoEdicao && setFotoAmpliada(foto.data)}
                             />
                             {modoEdicao && (

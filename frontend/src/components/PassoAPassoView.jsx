@@ -51,6 +51,34 @@ function detectVideoType(url) {
   return 'link';
 }
 
+// Video native com aspect-ratio dinamico (sem bordas pretas)
+function VideoNativo({ url, filename }) {
+  const [aspectRatio, setAspectRatio] = useState(null);
+  return (
+    <video
+      src={url}
+      controls
+      autoPlay
+      loop
+      muted
+      playsInline
+      onLoadedMetadata={(e) => {
+        const w = e.target.videoWidth;
+        const h = e.target.videoHeight;
+        if (w && h) setAspectRatio(w / h);
+      }}
+      className="w-full rounded"
+      style={{
+        aspectRatio: aspectRatio || undefined,
+        maxHeight: '500px',
+        objectFit: 'contain',
+        background: 'transparent',
+      }}
+      title={filename || 'video'}
+    />
+  );
+}
+
 function VideoPlayer({ item }) {
   const url = item.url;
   const type = detectVideoType(url);
@@ -74,17 +102,9 @@ function VideoPlayer({ item }) {
     const src = `https://player.vimeo.com/video/${id}?autoplay=1&muted=1&loop=1`;
     return <iframe src={src} className="w-full aspect-video rounded" allow="autoplay" allowFullScreen title={item.filename||'video'} />;
   }
-  return (
-    <video
-      src={url}
-      controls
-      autoPlay
-      loop
-      muted
-      playsInline
-      className="w-full max-h-[400px] rounded bg-black"
-    />
-  );
+  // Estrategia sem bordas pretas: usar aspect-ratio do proprio arquivo.
+  // Detectamos as dimensoes intrinsecas ao carregar e aplicamos style com aspectRatio.
+  return <VideoNativo url={url} filename={item.filename} />;
 }
 
 export default function PassoAPassoView() {

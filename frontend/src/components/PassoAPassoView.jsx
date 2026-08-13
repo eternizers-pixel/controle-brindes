@@ -349,7 +349,7 @@ export default function PassoAPassoView() {
   return (
     <div className="space-y-4">
       {/* Navegação das seções */}
-      <div className="card p-2 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-1">
+      <div className="card p-2 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-1">
         {SECOES.map((s) => {
           const Icon = s.icone;
           const ativa = s.key === secaoAtiva;

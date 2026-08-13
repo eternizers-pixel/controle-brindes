@@ -682,6 +682,7 @@ export async function criarGravacaoPasso(payload) {
       descricao:    payload.descricao || '',
       fotos:        Array.isArray(payload.fotos)  ? payload.fotos  : [],
       videos:       Array.isArray(payload.videos) ? payload.videos : [],
+      parametros:   payload.parametros || null,
     }).select().single()
   );
   return row;
@@ -698,6 +699,7 @@ export async function atualizarGravacaoPasso(id, payload) {
   if (payload.fotos !== undefined)        patch.fotos        = Array.isArray(payload.fotos) ? payload.fotos : [];
   if (payload.videos !== undefined)       patch.videos       = Array.isArray(payload.videos) ? payload.videos : [];
   if (payload.cor !== undefined)          patch.cor          = payload.cor;
+  if (payload.parametros !== undefined)   patch.parametros   = payload.parametros;
   const row = await handle(
     supabase.from('gravacao_passos').update(patch).eq('id', id).select().single()
   );

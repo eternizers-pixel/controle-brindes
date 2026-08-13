@@ -71,6 +71,23 @@ function detectVideoType(url) {
   return 'link';
 }
 
+// Renderiza texto com *palavra* virando <strong>, preservando line breaks
+function TextoFormatado({ children, className }) {
+  const texto = String(children || '');
+  // Divide por *asterisco* mantendo os capturadores
+  const partes = texto.split(/(\*[^*\n]+\*)/g);
+  return (
+    <p className={className} style={{ whiteSpace: 'pre-wrap' }}>
+      {partes.map((p, i) => {
+        if (p.startsWith('*') && p.endsWith('*') && p.length > 2) {
+          return <strong key={i} className="font-bold">{p.slice(1, -1)}</strong>;
+        }
+        return <span key={i}>{p}</span>;
+      })}
+    </p>
+  );
+}
+
 // Card visual pra cada parametro (Hachura, Angulo, Velocidade, Potencia)
 function ParamCard({ label, value, color }) {
   const palette = {
@@ -653,7 +670,7 @@ export default function PassoAPassoView() {
                         />
                       ) : (
                         passoAtual.descricao && (
-                          <p className="text-base sm:text-lg text-slate-700 whitespace-pre-wrap leading-relaxed">{passoAtual.descricao}</p>
+                          <TextoFormatado className="text-base sm:text-lg text-slate-700 leading-relaxed">{passoAtual.descricao}</TextoFormatado>
                         )
                       )}
                     </div>

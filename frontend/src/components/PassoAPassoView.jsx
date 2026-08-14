@@ -492,7 +492,7 @@ export default function PassoAPassoView({ kiosque = false } = {}) {
   return (
     <div className={kiosque ? "h-full flex flex-col gap-2" : "space-y-4"}>
       {/* Navegação das seções */}
-      <div className="card p-2 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-1">
+      <div className="card p-2 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1">
         {SECOES.map((s) => {
           const Icon = s.icone;
           const ativa = s.key === secaoAtiva;

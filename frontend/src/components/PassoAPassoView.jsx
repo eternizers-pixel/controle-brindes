@@ -50,7 +50,6 @@ const SECOES = [
     { key: 'caneta',   label: 'Canetas' },
     { key: 'copo',     label: 'Copos / Garrafas' },
   ]},
-  { key: 'duvidas',        titulo: 'Dúvidas Gerais',          icone: HelpCircle,     tipos: null },
 ];
 
 // Cores/variantes para o seletor de tipo em Parâmetros (aplica pra copo e caneta)
